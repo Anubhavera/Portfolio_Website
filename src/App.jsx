@@ -138,9 +138,12 @@ function App() {
     animate();
 
     return () => {
+      <div className="text">
+        <h1>Heyy</h1></div>
       window.removeEventListener("resize", onWindowResize);
       mountRef.current.removeChild(renderer.domElement);
       renderer.dispose();
+
     };
   }, []);
 
