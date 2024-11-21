@@ -138,8 +138,6 @@ function App() {
     animate();
 
     return () => {
-      <div className="text">
-        <h1>Heyy</h1></div>
       window.removeEventListener("resize", onWindowResize);
       mountRef.current.removeChild(renderer.domElement);
       renderer.dispose();
@@ -147,7 +145,29 @@ function App() {
     };
   }, []);
 
-  return <div id="canvas-container" ref={mountRef}></div>;
+  return ( 
+  <>
+  <div id="canvas-container" ref={mountRef}></div><div id="overlay">
+    <div className="navbar flex">
+      <div className="brand">
+        <h1>Anubhav <br/>Hooda</h1>
+      </div>
+
+      <div className="available pl-40">
+        <h2>For Work: </h2> 
+        <a className = "h2 underline underline-offset-1 font-sans" href="mailto:hoodaanubhav@gmail.com" > hoodaanubhav@gmail.com</a>
+      </div>
+      </div>
+      <main>
+        <div className="columns">
+          <div className="column"></div>
+          <div className="column"></div>
+          <div className="column"></div>
+        </div>
+      </main>
+      </div>
+    </>
+  )
 }
 
 export default App;

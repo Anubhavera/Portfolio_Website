@@ -1,6 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'bebas';
+  src: url('./assets/font/Bebas_Neue/BebasNeue-Regular.ttf');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.brand{
+  font-family: 'bebas';
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 2.5rem;
+  margin-bottom: 1rem;
+  color: white;
+}
+
 #canvas-container {
-  height: 100vh;
-  width: 100vw;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1; /* Canvas is behind content */
   overflow: hidden;
 }
 Body {
@@ -9,3 +33,25 @@ Body {
 }
 
 
+#overlay {
+  position: relative;
+  z-index: 2; /* Content is above canvas */
+  color: white;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+/* Columns Layout */
+.columns {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.column {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 20px;
+  border-radius: 10px;
+  color: white;
+}
