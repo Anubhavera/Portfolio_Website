@@ -41,36 +41,6 @@ function App() {
       sphere = new THREE.Mesh(geometry, material)
       scene.add(sphere)
 
-      // const textureLoader = new THREE.TextureLoader();
-      // const floorTexture = textureLoader.load("./assets/rock_wall_04_4k.gltf/textures/rock_wall_04_rough_4k.jpg");
-      // const planeGeometry = new THREE.PlaneGeometry(100, 100);
-      // const planeMaterial = new THREE.MeshStandardMaterial({
-      //   map: floorTexture,
-      //   roughness: 0.8, // Adjust for a rough floor appearance
-      // });
-      // const texturedPlane = new THREE.Mesh(planeGeometry, planeMaterial);
-      // texturedPlane.rotation.x = -Math.PI / 2; // Lay flat
-      // texturedPlane.position.y = -15; // Position below the sphere
-      // scene.add(texturedPlane);
-
-      // const materialbg = new THREE.MeshStandardMaterial({
-      //   // map: colorMap, // Optional: base color
-      //   normalMap: normalMap,
-      //   displacementMap: displacementMap,
-      //   displacementScale: 0.5, // Adjust based on texture intensity
-      //   roughnessMap: roughnessMap, // Optional: control surface roughness
-      //   roughness: 0.7, // Fine-tune overall roughness
-      // });
-
-      // displacementMap.wrapS = displacementMap.wrapT = THREE.RepeatWrapping;
-      // normalMap.wrapS = normalMap.wrapT = THREE.RepeatWrapping;
-
-      // displacementMap.offset.set(0.1, 0.1); // Adjust offsets for better positioning
-      // normalMap.offset.set(0.1, 0.1);
-
-      // displacementMap.repeat.set(1, 1); // Adjust texture scaling
-      // normalMap.repeat.set(1, 1);
-
       const reflectorGeometry = new THREE.PlaneGeometry(100, 100)
       reflector = new Reflector(reflectorGeometry, {
         color: new THREE.Color(0x888888),
@@ -167,7 +137,7 @@ function App() {
             <div className="column"></div>
             <div className="column">
               {" "}
-              This section is under progress. Stay tuned! 🚀{" "}
+              This Website is actively under progress. Stay tuned! 🚀{" "}
             </div>
             <div className="column"></div>
           </div>
