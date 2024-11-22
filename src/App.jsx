@@ -120,7 +120,7 @@ function App() {
     }
 
     function animate() {
-      sphere.material.uniforms.iTime.value += 0.03 // Update time
+      sphere.material.uniforms.iTime.value += 0.01 // Update time
       controls.update()
       renderer.render(scene, camera)
       requestAnimationFrame(animate)
@@ -165,7 +165,10 @@ function App() {
         <main>
           <div className="columns">
             <div className="column"></div>
-            <div className="column"> This section is under progress. Stay tuned! 🚀 </div>
+            <div className="column">
+              {" "}
+              This section is under progress. Stay tuned! 🚀{" "}
+            </div>
             <div className="column"></div>
           </div>
         </main>

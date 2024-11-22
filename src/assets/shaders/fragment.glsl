@@ -2,13 +2,15 @@ uniform vec2 iResolution;
 uniform float iTime;
 
 void mainImage(out vec4 fragColor, vec2 fragCoord) {
-    // float mr = min(iResolution.x, iResolution.y);
-    // float zoom = 0.2;
-    // vec2 uv = (fragCoord * 2.0 - iResolution.xy) / mr / zoom;
-float zoom = 0.2; 
-float mr = min(iResolution.x, iResolution.y);
-vec2 aspectRatio = iResolution.xy / min(iResolution.x, iResolution.y);
-vec2 uv = ((fragCoord.xy - 0.5 * iResolution.xy) / (mr * zoom)) * aspectRatio;
+    float mr = min(iResolution.x, iResolution.y);
+    float zoom = 0.2;
+    vec2 uv = (fragCoord * 2.0 - iResolution.xy) / mr / zoom;
+
+
+// float zoom = 0.2; 
+// float mr = min(iResolution.x, iResolution.y);
+// vec2 aspectRatio = iResolution.xy / min(iResolution.x, iResolution.y);
+// vec2 uv = ((fragCoord.xy - 0.5 * iResolution.xy) / (mr * zoom)) * aspectRatio;
 
     float d = -iTime * 0.5;
     float a = 0.0;
