@@ -9,6 +9,13 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: "jbm";
+  src: url("./assets/font/JetBrainsMono-2.304/fonts/ttf/JetBrainsMono-Medium.ttf");
+  font-weight: normal;
+  font-style: normal;
+}
+
 /* .DNT {
   position: fixed;
   top: 0;
@@ -20,11 +27,24 @@
   pointer-events: none;
 } */ 
 
+.jbm {
+  font-family: "jbm";
+  font-size: .8rem;
+  font-weight: 300;
+  line-height: 1.2rem;
+}
+
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .brand {
   font-family: "bebas";
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  line-height: 2.5rem;
+  line-height: 2rem;
   margin-bottom: 1rem;
   color: white;
 }
@@ -53,16 +73,16 @@ Body {
 }
 
 /* Columns Layout */
-.columns {
+/* .columns {
   display: flex;
   gap: 20px;
   margin-top: 20px;
-}
+} */
 
 .column {
   flex: 1;
   /* background: rgba(0, 0, 0, 0.6); */
-  padding: 20px;
+  padding: 0px;
   border-radius: 10px;
   color: white;
 }

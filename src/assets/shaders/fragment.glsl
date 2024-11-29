@@ -25,24 +25,6 @@ void mainImage(out vec4 fragColor, vec2 fragCoord) {
 }
 
 
-// void mainImage( out vec4 o, vec2 u )
-// {
-//   float mr = min(iResolution.x, iResolution.y);
-//     float zoom = 0.2;
-//     vec2 R = iResolution.xy;
-//     u = (u+u-R)/R.y;
-    
-//     float a, d, i;
-    
-//     for (; i < 8.; d += sin(i++ * u.y + a)) 
-//         a += cos(i - d + .5 * iTime - a * u.x);
-            
-//     o.xy = .4 + .6 * cos(u * vec2(d, a));
-//     o.z = .5 + .5 * cos(a + d);
-             
-//     o = cos(.5 + .5 * cos(vec4(d, a, 2.5, 0)) * o);
-// }
-
 void main() {
     mainImage(gl_FragColor, gl_FragCoord.xy);
 }
