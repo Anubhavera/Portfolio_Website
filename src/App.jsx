@@ -50,11 +50,9 @@ function App() {
         color: new THREE.Color(0x888888),
         textureWidth: window.innerWidth,
         textureHeight: window.innerHeight,
-        clipBias : 0.003,
+        clipBias: 0.003,
         color: 0x888888,
-
       })
-      
 
       reflector.material = new THREE.MeshStandardMaterial({
         color: 0x888888,
@@ -66,7 +64,7 @@ function App() {
 
       reflector.position.y = -13 // Position the reflector below the sphere
       reflector.rotation.x = -Math.PI / 2 // Rotate to face upwards
-      scene.add(reflector);
+      scene.add(reflector)
 
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
       scene.add(ambientLight)
@@ -151,8 +149,19 @@ function App() {
                     </a>
                   </div>
                   <div className="absolute inset-x-13 bottom-10 h-16  ">
-                    <a className= "jbm font-light hover:font-bold" href="https://www.linkedin.com/in/anubhavera">LinkedIn</a><br/>
-                    <a className= "jbm font-light hover:font-bold" href="https://github.com/Anubhavera">GitHub</a>
+                    <a
+                      className="jbm font-light hover:font-bold"
+                      href="https://www.linkedin.com/in/anubhavera"
+                    >
+                      LinkedIn
+                    </a>
+                    <br />
+                    <a
+                      className="jbm font-light hover:font-bold"
+                      href="https://github.com/Anubhavera"
+                    >
+                      GitHub
+                    </a>
                   </div>
                 </div>
               </div>
@@ -167,16 +176,20 @@ function App() {
                 </p>
               </div>
               <div className="4 column justify-self-center jbm">
-                <button className="btn font-normal hover:font-bold">Home</button>
+                <button className="btn font-normal hover:font-bold">
+                  Home
+                </button>
                 <br />
-                <button className="btn font-normal hover:font-bold">Projects</button>
+                <button className="btn font-normal hover:font-bold">
+                  Projects
+                </button>
                 <br />
-                <button className="btn font-normal hover:font-bold">Services</button>
+                <button className="btn font-normal hover:font-bold">
+                  Services
+                </button>
                 <br />
-                
               </div>
             </div>
-            
           </div>
         </main>
       </div>
