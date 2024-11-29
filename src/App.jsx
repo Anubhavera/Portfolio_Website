@@ -101,7 +101,7 @@ function App() {
     }
 
     function animate() {
-      sphere.material.uniforms.iTime.value += 0.02
+      sphere.material.uniforms.iTime.value += 0.01
       controls.update()
       renderer.render(scene, camera)
       requestAnimationFrame(animate)
