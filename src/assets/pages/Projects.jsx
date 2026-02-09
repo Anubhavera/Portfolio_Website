@@ -23,31 +23,33 @@ const projects = [
     gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
     image:"sprintly.png"
   },
-  {
-    title: "Legal AI Assistant",
-    description: "Cross-platform AI assistant for legal queries with RAG pipeline and verified sources.",
-    tags: ["Python", "FastAPI", "React Native", "LLM"],
-    gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-    // image:"https://placehold.co/600x400/667eea/ffffff?text=Working"
-  },
-  {
-    title: "AdaptiveSLM",
-    description: "Small Language Model with profile-aware knowledge distillation for edge devices.",
-    tags: ["PyTorch", "Transformers", "PEFT", "Research"],
-    gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
-  },
-  {
-    title: "Portfolio Website",
-    description: "Three.js powered portfolio with animated globe and immersive transitions.",
-    tags: ["Three.js", "React", "GSAP", "Shaders"],
-    gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)"
-  },
-  {
-    title: "Video Editor App",
-    description: "Expo-based mobile video editor with cloud rendering architecture.",
-    tags: ["React Native", "Expo", "FFmpeg", "Cloud"],
-    gradient: "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)"
+   {
+    title: "Temporal Workflow Agent",
+    description: "A minimal agent execution engine demonstrating correct Temporal usage for workflow orchestration.",
+    tags: ["Temporal", "Architecture", "LLM", "React"],
+    gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+    image:"temporal.png"
   }
+  // ,
+  // {
+  //   title: "Legal AI Assistant",
+  //   description: "Cross-platform AI assistant for legal queries with RAG pipeline and verified sources.",
+  //   tags: ["Python", "FastAPI", "React Native", "LLM"],
+  //   gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+  //   // image:"https://placehold.co/600x400/667eea/ffffff?text=Working"
+  // },
+  // {
+  //   title: "AdaptiveSLM",
+  //   description: "Small Language Model with profile-aware knowledge distillation for edge devices.",
+  //   tags: ["PyTorch", "Transformers", "PEFT", "Research"],
+  //   gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
+  // },
+  // {
+  //   title: "Video Editor App",
+  //   description: "Expo-based mobile video editor with cloud rendering architecture.",
+  //   tags: ["React Native", "Expo", "FFmpeg", "Cloud"],
+  //   gradient: "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)"
+  // }
 ]
 
 const Projects = () => {
