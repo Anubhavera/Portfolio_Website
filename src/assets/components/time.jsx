@@ -6,7 +6,7 @@ const LocalTime = () => {
   useEffect(() => {
     const updateTime = () => {
       const options = {
-        timezone: "Asia/Kolkata",
+        timeZone: "Asia/Kolkata",
         hour : '2-digit',
         minute : '2-digit',
       }

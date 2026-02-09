@@ -1,0 +1,314 @@
+
+import {
+  Color,
+  Matrix4,
+  Mesh,
+  PerspectiveCamera,
+  Plane,
+  ShaderMaterial,
+  UniformsUtils,
+  Vector3,
+  Vector4,
+  WebGLRenderTarget,
+  HalfFloatType
+} from 'three';
+
+class WaterReflector extends Mesh {
+
+  constructor(geometry, options = {}) {
+
+    super(geometry);
+
+    this.isReflector = true;
+
+    this.type = 'Reflector';
+    this.camera = new PerspectiveCamera();
+
+    const scope = this;
+
+    const color = (options.color !== undefined) ? new Color(options.color) : new Color(0x7F7F7F);
+    const textureWidth = options.textureWidth || 512;
+    const textureHeight = options.textureHeight || 512;
+    const clipBias = options.clipBias || 0;
+    const shader = options.shader || WaterReflector.ReflectorShader; // Use local shader
+    const multisample = (options.multisample !== undefined) ? options.multisample : 4;
+
+    //
+
+    const reflectorPlane = new Plane();
+    const normal = new Vector3();
+    const reflectorWorldPosition = new Vector3();
+    const cameraWorldPosition = new Vector3();
+    const rotationMatrix = new Matrix4();
+    const lookAtPosition = new Vector3(0, 0, - 1);
+    const clipPlane = new Vector4();
+
+    const view = new Vector3();
+    const target = new Vector3();
+    const q = new Vector4();
+
+    const textureMatrix = new Matrix4();
+    const virtualCamera = this.camera;
+
+    const renderTarget = new WebGLRenderTarget(textureWidth, textureHeight, { samples: multisample, type: HalfFloatType });
+
+    const material = new ShaderMaterial({
+      name: (shader.name !== undefined) ? shader.name : 'unspecified',
+      uniforms: UniformsUtils.clone(shader.uniforms),
+      fragmentShader: shader.fragmentShader,
+      vertexShader: shader.vertexShader
+    });
+
+    material.uniforms['tDiffuse'].value = renderTarget.texture;
+    material.uniforms['color'].value = color;
+    material.uniforms['textureMatrix'].value = textureMatrix;
+
+    this.material = material;
+
+    this.onBeforeRender = function (renderer, scene, camera) {
+
+      reflectorWorldPosition.setFromMatrixPosition(scope.matrixWorld);
+      cameraWorldPosition.setFromMatrixPosition(camera.matrixWorld);
+
+      rotationMatrix.extractRotation(scope.matrixWorld);
+
+      normal.set(0, 0, 1);
+      normal.applyMatrix4(rotationMatrix);
+
+      view.subVectors(reflectorWorldPosition, cameraWorldPosition);
+
+      // Avoid rendering when reflector is facing away
+
+      if (view.dot(normal) > 0) return;
+
+      view.reflect(normal).negate();
+      view.add(reflectorWorldPosition);
+
+      rotationMatrix.extractRotation(camera.matrixWorld);
+
+      lookAtPosition.set(0, 0, - 1);
+      lookAtPosition.applyMatrix4(rotationMatrix);
+      lookAtPosition.add(cameraWorldPosition);
+
+      target.subVectors(reflectorWorldPosition, lookAtPosition);
+      target.reflect(normal).negate();
+      target.add(reflectorWorldPosition);
+
+      virtualCamera.position.copy(view);
+      virtualCamera.up.set(0, 1, 0);
+      virtualCamera.up.applyMatrix4(rotationMatrix);
+      virtualCamera.up.reflect(normal);
+      virtualCamera.lookAt(target);
+
+      virtualCamera.far = camera.far; // Used in WebGLBackground
+
+      virtualCamera.updateMatrixWorld();
+      virtualCamera.projectionMatrix.copy(camera.projectionMatrix);
+
+      // Update the texture matrix
+      textureMatrix.set(
+        0.5, 0.0, 0.0, 0.5,
+        0.0, 0.5, 0.0, 0.5,
+        0.0, 0.0, 0.5, 0.5,
+        0.0, 0.0, 0.0, 1.0
+      );
+      textureMatrix.multiply(virtualCamera.projectionMatrix);
+      textureMatrix.multiply(virtualCamera.matrixWorldInverse);
+      textureMatrix.multiply(scope.matrixWorld);
+
+      // Now update projection matrix with new clip plane, implementing code from: http://www.terathon.com/code/oblique.html
+      // Paper explaining this technique: http://www.terathon.com/lengyel/Lengyel-Oblique.pdf
+      reflectorPlane.setFromNormalAndCoplanarPoint(normal, reflectorWorldPosition);
+      reflectorPlane.applyMatrix4(virtualCamera.matrixWorldInverse);
+
+      clipPlane.set(reflectorPlane.normal.x, reflectorPlane.normal.y, reflectorPlane.normal.z, reflectorPlane.constant);
+
+      const projectionMatrix = virtualCamera.projectionMatrix;
+
+      q.x = (Math.sign(clipPlane.x) + projectionMatrix.elements[8]) / projectionMatrix.elements[0];
+      q.y = (Math.sign(clipPlane.y) + projectionMatrix.elements[9]) / projectionMatrix.elements[5];
+      q.z = - 1.0;
+      q.w = (1.0 + projectionMatrix.elements[10]) / projectionMatrix.elements[14];
+
+      // Calculate the scaled plane vector
+      clipPlane.multiplyScalar(2.0 / clipPlane.dot(q));
+
+      // Replacing the third row of the projection matrix
+      projectionMatrix.elements[2] = clipPlane.x;
+      projectionMatrix.elements[6] = clipPlane.y;
+      projectionMatrix.elements[10] = clipPlane.z + 1.0 - clipBias;
+      projectionMatrix.elements[14] = clipPlane.w;
+
+      // Render
+      scope.visible = false;
+
+      const currentRenderTarget = renderer.getRenderTarget();
+
+      const currentXrEnabled = renderer.xr.enabled;
+      const currentShadowAutoUpdate = renderer.shadowMap.autoUpdate;
+
+      renderer.xr.enabled = false; // Avoid camera modification
+      renderer.shadowMap.autoUpdate = false; // Avoid re-computing shadows
+
+      renderer.setRenderTarget(renderTarget);
+
+      renderer.state.buffers.depth.setMask(true); // make sure the depth buffer is writable so it can be properly cleared, see #18897
+
+      if (renderer.autoClear === false) renderer.clear();
+      renderer.render(scene, virtualCamera);
+
+      renderer.xr.enabled = currentXrEnabled;
+      renderer.shadowMap.autoUpdate = currentShadowAutoUpdate;
+
+      renderer.setRenderTarget(currentRenderTarget);
+
+      // Restore viewport
+
+      const viewport = camera.viewport;
+
+      if (viewport !== undefined) {
+
+        renderer.state.viewport(viewport);
+
+      }
+
+      scope.visible = true;
+
+    };
+
+    this.getRenderTarget = function () {
+
+      return renderTarget;
+
+    };
+
+    this.dispose = function () {
+
+      renderTarget.dispose();
+      scope.material.dispose();
+
+    };
+
+  }
+
+}
+
+WaterReflector.ReflectorShader = {
+
+  name: 'WaterReflectorShader',
+
+  uniforms: {
+
+    'color': {
+      value: null
+    },
+
+    'tDiffuse': {
+      value: null
+    },
+
+    'textureMatrix': {
+      value: null
+    },
+
+    'tRoughness': {
+      value: null
+    },
+
+    'iTime': {
+      value: 0.0
+    }
+
+  },
+
+  vertexShader: /* glsl */`
+		uniform mat4 textureMatrix;
+		varying vec4 vUv;
+        varying vec2 vSurfUv; // Use standard UVs for roughness map
+
+		#include <common>
+		#include <logdepthbuf_pars_vertex>
+
+		void main() {
+            vSurfUv = uv; // Pass standard UVs
+			vUv = textureMatrix * vec4( position, 1.0 );
+
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+			#include <logdepthbuf_vertex>
+
+		}`,
+
+  fragmentShader: /* glsl */`
+		uniform vec3 color;
+		uniform sampler2D tDiffuse;
+        uniform sampler2D tRoughness;
+        uniform float iTime;
+        
+		varying vec4 vUv;
+        varying vec2 vSurfUv;
+
+		#include <logdepthbuf_pars_fragment>
+
+		float blendOverlay( float base, float blend ) {
+			return( base < 0.5 ? ( 2.0 * base * blend ) : ( 1.0 - 2.0 * ( 1.0 - base ) * ( 1.0 - blend ) ) );
+		}
+
+		vec3 blendOverlay( vec3 base, vec3 blend ) {
+			return vec3( blendOverlay( base.r, blend.r ), blendOverlay( base.g, blend.g ), blendOverlay( base.b, blend.b ) );
+		}
+
+		void main() {
+			#include <logdepthbuf_fragment>
+            
+            // Sample Texture (Ground)
+            vec4 texColor = texture2D(tRoughness, vSurfUv * 4.0);
+            float roughness = texColor.r; // Assume Texture R channel is roughness/height
+            
+            // Calculate pseudo-normal for distortion (Bump Mapping)
+            float offset = 0.01; // Sample offset
+            float h = roughness;
+            float h_right = texture2D(tRoughness, (vSurfUv * 4.0) + vec2(offset, 0.0)).r;
+            float h_up    = texture2D(tRoughness, (vSurfUv * 4.0) + vec2(0.0, offset)).r;
+            
+            vec2 distortion = vec2(h - h_right, h - h_up) * 5.0; // Distortion strength
+            
+            // Projective lookup with distortion
+            vec4 coord = vUv;
+            coord.xy += distortion;
+            
+			vec4 base = texture2DProj( tDiffuse, coord );
+            
+            // "Wet Stone" Logic
+            // 1. Floor Color: The stone itself (darkened)
+            vec3 floorColor = texColor.rgb * 0.05; // Very dark stone
+            
+            // 2. Reflection Mask: Smooth parts reflect, Rough parts don't
+            float reflectionIntensity = 1.0 - roughness;
+            reflectionIntensity = pow(reflectionIntensity, 3.0); // High contrast (sharper wet spots)
+            
+            // 3. Combine: Floor + Reflection
+            vec3 finalColor = floorColor + base.rgb * reflectionIntensity;
+            
+            // 4. Tint with Reflector Color (optional)
+            // We use blendOverlay to tint the reflection if needed, or just partial mix
+            // finalColor = blendOverlay(finalColor, color); // This might be too strong
+            
+            // Multiply by color to allow fading/tinting
+            finalColor *= color;
+
+            
+            // 5. Vignette (Blend edges to black)
+            float dist = distance(vSurfUv, vec2(0.5));
+            float vignette = smoothstep(0.5, 0.2, dist);
+            finalColor *= vignette;
+            
+			gl_FragColor = vec4( finalColor, 1.0 );
+
+			#include <tonemapping_fragment>
+			#include <colorspace_fragment>
+
+		}`
+};
+
+export { WaterReflector };
