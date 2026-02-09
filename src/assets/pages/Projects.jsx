@@ -9,16 +9,26 @@ import "../../App.css"
 // Project data
 const projects = [
   {
-    title: "PayUp",
-    description: "Modern payment splitting application with real-time tracking and Razorpay integration.",
-    tags: ["React", "Node.js", "Firebase", "Razorpay"],
-    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+    title: "Sundown Studios",
+    description: "A creative studio website displaying unique experiences, environments, and multidisciplinary design work.",
+    tags: ["React", "GSAP", "Responsive Design", "Lenis"],
+    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    image: "sundown.png",
+    link: "https://sundown-studios-snowy.vercel.app/"
+  },
+  {
+    title: "Sprintly",
+    description: "A multi-tenant kanban style project management tool built with Django + GraphQL backend and React + TypeScript frontend.",
+    tags: ["React", "Django", "GraphQL", "TypeScript"],
+    gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+    image:"sprintly.png"
   },
   {
     title: "Legal AI Assistant",
     description: "Cross-platform AI assistant for legal queries with RAG pipeline and verified sources.",
     tags: ["Python", "FastAPI", "React Native", "LLM"],
-    gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
+    gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+    // image:"https://placehold.co/600x400/667eea/ffffff?text=Working"
   },
   {
     title: "AdaptiveSLM",
@@ -31,12 +41,6 @@ const projects = [
     description: "Three.js powered portfolio with animated globe and immersive transitions.",
     tags: ["Three.js", "React", "GSAP", "Shaders"],
     gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)"
-  },
-  {
-    title: "Fleet Tracker",
-    description: "Real-time vehicle tracking dashboard with Google Maps integration.",
-    tags: ["React", "Node.js", "PostgreSQL", "Maps API"],
-    gradient: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)"
   },
   {
     title: "Video Editor App",
@@ -214,19 +218,54 @@ const Projects = () => {
               className="project-card"
               style={{ animationDelay: `${index * 0.08}s` }}
             >
-              <div 
-                className="project-card-image"
-                style={{ background: project.gradient }}
-              >
-                <span style={{ 
-                  fontSize: "3rem", 
-                  opacity: 0.3, 
-                  zIndex: 1,
-                  fontFamily: "bebas"
-                }}>
-                  {project.title.charAt(0)}
-                </span>
-              </div>
+              {project.link ? (
+                <a 
+                  href={project.link} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="project-card-image-link"
+                  style={{ display: "block", textDecoration: "none", color: "inherit" }}
+                >
+                  <div 
+                    className="project-card-image"
+                    style={{ 
+                      background: project.image ? `url(${project.image}) center/cover no-repeat` : project.gradient,
+                      position: "relative"
+                    }}
+                  >
+                    {!project.image && (
+                      <span style={{ 
+                        fontSize: "3rem", 
+                        opacity: 0.3, 
+                        zIndex: 1,
+                        fontFamily: "bebas"
+                      }}>
+                        {project.title.charAt(0)}
+                      </span>
+                    )}
+                  </div>
+                </a>
+              ) : (
+                <div 
+                  className="project-card-image"
+                  style={{ 
+                    background: project.image ? `url(${project.image}) center/cover no-repeat` : project.gradient,
+                    position: "relative"
+                  }}
+                >
+                  {!project.image && (
+                    <span style={{ 
+                      fontSize: "3rem", 
+                      opacity: 0.3, 
+                      zIndex: 1,
+                      fontFamily: "bebas"
+                    }}>
+                      {project.title.charAt(0)}
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="project-card-content">
                 <h3 className="project-card-title">{project.title}</h3>
                 <p className="project-card-description">{project.description}</p>

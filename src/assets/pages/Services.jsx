@@ -32,6 +32,7 @@ const serviceCategories = [
       "Python",
       "TypeScript",
       "PostgreSQL",
+      "AWS",
       "Firebase"
     ]
   },
