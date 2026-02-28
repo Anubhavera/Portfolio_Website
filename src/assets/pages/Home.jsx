@@ -407,6 +407,11 @@ function Home() {
                     Hooda
                   </h1>
                 </div>
+                {/* <div className="relative inset-x-0 top-64 h-16 jbm">
+                  <div className="brand">
+                  <h1>Full Stack Developer</h1>
+                  </div>
+                </div> */}
                 <div className="absolute inset-x-0 bottom-2 h-16 jbm">
                   Local Time : <LocalTime />
                 </div>
@@ -426,6 +431,7 @@ function Home() {
                     <a
                       className="jbm font-light hover:font-bold"
                       href="https://www.linkedin.com/in/anubhavera"
+                      target="_blank"
                     >
                       LinkedIn
                     </a>
@@ -433,6 +439,7 @@ function Home() {
                     <a
                       className="jbm font-light hover:font-bold"
                       href="https://github.com/Anubhavera"
+                      target="_blank"
                     >
                       GitHub
                     </a>
