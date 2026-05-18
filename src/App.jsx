@@ -1,7 +1,8 @@
 import React from "react"
 import "./App.css"
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
-import Home from "./assets/pages/Home"
+// import Home from "./assets/pages/Home"
+import Home from "./assets/pages/refined-home"
 import Projects from "./assets/pages/Projects"
 import Services from "./assets/pages/Services"
 
