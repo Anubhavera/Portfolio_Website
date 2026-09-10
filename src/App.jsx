@@ -1,5 +1,6 @@
-import React from "react"
 import "./App.css"
+import "./assets/pages/refined-home.css"
+import "./refinements.css"
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 // import Home from "./assets/pages/Home"
 import Home from "./assets/pages/refined-home"

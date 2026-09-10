@@ -271,21 +271,26 @@ WaterReflector.ReflectorShader = {
             float h_right = texture2D(tRoughness, (vSurfUv * 4.0) + vec2(offset, 0.0)).r;
             float h_up    = texture2D(tRoughness, (vSurfUv * 4.0) + vec2(0.0, offset)).r;
             
-            vec2 distortion = vec2(h - h_right, h - h_up) * 5.0; // Distortion strength
+            // Distort normalized projective UVs gently, so the sphere remains recognizable.
+            vec2 ripple = vec2(
+                sin(vSurfUv.y * 110.0 + iTime * 0.65),
+                cos(vSurfUv.x * 95.0 + iTime * 0.5)
+            ) * 0.00065;
+            vec2 distortion = vec2(h - h_right, h - h_up) * 0.012 + ripple;
             
             // Projective lookup with distortion
             vec4 coord = vUv;
-            coord.xy += distortion;
+            coord.xy += distortion * coord.w;
             
 			vec4 base = texture2DProj( tDiffuse, coord );
             
             // "Wet Stone" Logic
             // 1. Floor Color: The stone itself (darkened)
-            vec3 floorColor = texColor.rgb * 0.05; // Very dark stone
+            vec3 floorColor = texColor.rgb * 0.04; // Very dark stone
             
             // 2. Reflection Mask: Smooth parts reflect, Rough parts don't
             float reflectionIntensity = 1.0 - roughness;
-            reflectionIntensity = pow(reflectionIntensity, 3.0); // High contrast (sharper wet spots)
+            reflectionIntensity = mix(0.28, 0.95, pow(reflectionIntensity, 1.4)); // Wet patches retain a legible reflection.
             
             // 3. Combine: Floor + Reflection
             vec3 finalColor = floorColor + base.rgb * reflectionIntensity;
@@ -300,7 +305,7 @@ WaterReflector.ReflectorShader = {
             
             // 5. Vignette (Blend edges to black)
             float dist = distance(vSurfUv, vec2(0.5));
-            float vignette = smoothstep(0.5, 0.2, dist);
+            float vignette = 1.0 - smoothstep(0.2, 0.5, dist);
             finalColor *= vignette;
             
 			gl_FragColor = vec4( finalColor, 1.0 );

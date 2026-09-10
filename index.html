@@ -4,21 +4,43 @@
     <meta charset="UTF-8" />
     <link
       rel="icon"
-      type="image/svg+xml"
-      href="./src/assets/favicon/favicon.ico"
+      type="image/x-icon"
+      href="/src/assets/favicon/favicon.ico"
     />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0"
     />
-    <title>Hi! I'm Anubhav Hooda</title>
+    <title>Anubhav Hooda — Design Engineer & Developer</title>
+    <meta name="description" content="Anubhav Hooda, a developer and design engineer based in New Delhi. Web applications, interactive interfaces, and creative development." />
+    <link rel="canonical" href="https://www.anubhavhooda.dev/" />
+    <style>
+      html, body { margin: 0; background: #000; color: #fff; }
+      #portfolio-loader { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; isolation: isolate; }
+      #portfolio-loader::before { content: ""; position: absolute; inset: 0; z-index: -1; background: #000; opacity: 1; transition: opacity var(--intro-reveal) cubic-bezier(.45,0,.55,1); }
+      #portfolio-loader[hidden] { display: none; }
+      #portfolio-loader.is-complete::before { opacity: 0; }
+      .intro-orb { position: relative; width: min(40vh, 80vw); aspect-ratio: 1; opacity: 1; transition: opacity 850ms ease-in-out; }
+      .intro-orb::after { content: ""; position: absolute; inset: 1%; border-radius: 50%; box-shadow: 0 0 28px 6px #ded9e529, inset 0 0 28px 6px #ded9e529; opacity: 0; transition: opacity var(--intro-hold) ease-in-out; }
+      .intro-ring { display: block; width: 100%; height: 100%; overflow: visible; transform: rotate(-90deg); }
+      .intro-ring circle { fill: none; stroke: #9d99a5; stroke-width: .16; stroke-dasharray: 1; stroke-dashoffset: 1; animation: intro-orbit var(--intro-draw) var(--intro-settle) cubic-bezier(.45,0,.55,1) forwards; }
+      .is-ready .intro-orb::after { opacity: 1; }
+      .is-complete .intro-orb { opacity: 0; }
+      .startup-fallback { max-width: 480px; padding: 64px 32px; font: 16px/1.7 monospace; }
+      .startup-fallback a { color: white; }
+      @keyframes intro-orbit { to { stroke-dashoffset: 0; } }
+      @media (prefers-reduced-motion: reduce) { #portfolio-loader::before, .intro-orb, .intro-orb::after { transition: none; } .intro-ring circle { animation: none; stroke-dashoffset: 0; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="portfolio-loader" role="status" aria-label="Loading portfolio" hidden>
+      <div class="intro-orb" aria-hidden="true"><svg class="intro-ring" viewBox="0 0 100 100"><circle cx="50" cy="50" r="49" pathLength="1" /></svg></div>
+    </div>
+    <div id="root"><div class="startup-fallback"><h1>Anubhav Hooda</h1><p>I build web applications and interactive experiences.</p><p><a href="mailto:hoodaanubhav@gmail.com">hoodaanubhav@gmail.com</a></p></div></div>
+    <script src="/boot.js"></script>
     <script
       type="module"
       src="/src/main.jsx"
     ></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   </body>
 </html>

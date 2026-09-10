@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import * as THREE from "three"
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { WaterReflector } from "../components/WaterReflector"
 import { useNavigate, useLocation } from "react-router-dom"
 import gsap from "gsap"
@@ -11,10 +10,8 @@ import roughnessMapImg from "../bg.jpg"
 /**
  * RefinedHome
  * ───────────
- * Same Three.js scene + GSAP transitions as Home.jsx, with a refined
- * editorial layout: top studio light, hairline frame, stroked name
- * overlay, FIG. labels around the sphere, tagline, edge labels, and a
- * scrolling bottom marquee.
+ * Original iridescent sphere, reflective floor, mouse parallax, and GSAP
+ * route transitions with a quieter responsive overlay and managed cleanup.
  */
 function RefinedHome() {
   const navigate = useNavigate()
@@ -27,6 +24,8 @@ function RefinedHome() {
   const overlayRef = useRef(null)
   const rendererRef = useRef(null)
   const animationIdRef = useRef(null)
+  const transitionRef = useRef(false)
+  const timelineRef = useRef(null)
   const [isAnimating, setIsAnimating] = useState(false)
   const [clock, setClock] = useState("IST —:—")
 
@@ -50,9 +49,17 @@ function RefinedHome() {
 
   /* ── three.js scene ─────────────────────────────────────────────── */
   useEffect(() => {
-    if (!mountRef.current) return
+    const mount = mountRef.current
+    if (!mount) return
 
-    let camera, scene, renderer, controls, sphere, reflector
+    let camera, scene, renderer, sphere, reflector, roughnessMap
+    let returnTimer
+    let previousTime = performance.now()
+    let disposed = false
+    let textureReady = false
+    let announcedReady = false
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
+    transitionRef.current = Boolean(isFromOtherPage)
     const mouse = { x: 0, y: 0 }
     const targetCameraPosition = { x: 0, y: 0 }
 
@@ -103,7 +110,13 @@ function RefinedHome() {
         sphereRef.current = sphere
 
         const textureLoader = new THREE.TextureLoader()
-        const roughnessMap = textureLoader.load(roughnessMapImg)
+        roughnessMap = textureLoader.load(roughnessMapImg, () => {
+          if (disposed) roughnessMap.dispose()
+          else { textureReady = true; renderStillFrame() }
+        }, undefined, () => {
+          textureReady = true
+          renderStillFrame()
+        })
         roughnessMap.wrapS = THREE.RepeatWrapping
         roughnessMap.wrapT = THREE.RepeatWrapping
         roughnessMap.repeat.set(4, 4)
@@ -119,7 +132,7 @@ function RefinedHome() {
           reflector.material.uniforms.tRoughness.value = roughnessMap
         }
         reflector.material.uniforms.iTime = { value: 0 }
-        reflector.position.y = -15
+        reflector.position.y = -11.5
         reflector.rotation.x = -Math.PI / 2
         scene.add(reflector)
         reflectorRef.current = reflector
@@ -156,26 +169,25 @@ function RefinedHome() {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
         renderer.setClearColor(0x000000, 1)
 
-        if (mountRef.current) {
-          mountRef.current.appendChild(renderer.domElement)
-          rendererRef.current = renderer
-        }
-
-        controls = new OrbitControls(camera, renderer.domElement)
-        controls.enableDamping = true
-        controls.dampingFactor = 0.05
-        controls.enableZoom = false
-        controls.autoRotate = false
-        controls.enabled = false
+        mount.appendChild(renderer.domElement)
+        rendererRef.current = renderer
 
         window.addEventListener("resize", onWindowResize)
-        window.addEventListener("mousemove", onMouseMove)
+        window.addEventListener("mousemove", onMouseMove, { passive: true })
+        window.addEventListener("blur", resetMouse)
+        document.addEventListener("mouseleave", resetMouse)
+        document.addEventListener("visibilitychange", onVisibilityChange)
+        reducedMotion.addEventListener("change", onMotionChange)
+        renderer.domElement.addEventListener("webglcontextlost", onContextLost)
+        renderer.domElement.addEventListener("webglcontextrestored", onContextRestored)
 
         if (isFromOtherPage) {
-          setTimeout(() => playZoomOutAnimation(), 200)
+          returnTimer = setTimeout(() => playZoomOutAnimation(), 100)
         }
       } catch (error) {
         console.error("Error initializing Three.js:", error)
+        transitionRef.current = false
+        if (overlayRef.current) overlayRef.current.style.opacity = "1"
       }
     }
 
@@ -188,7 +200,13 @@ function RefinedHome() {
       )
         return
 
-      const tl = gsap.timeline()
+      const tl = gsap.timeline({
+        onComplete: () => {
+          transitionRef.current = false
+          renderStillFrame()
+        },
+      })
+      timelineRef.current = tl
 
       tl.to(overlayRef.current, { opacity: 1, duration: 0.8, ease: "power2.out" }, 0)
 
@@ -224,13 +242,70 @@ function RefinedHome() {
         { x: 0, y: 0, z: 60, duration: 1.2, ease: "power2.inOut" },
         0.1
       )
+      if (reducedMotion.matches) tl.progress(1)
     }
 
     function onMouseMove(event) {
+      if (reducedMotion.matches || !window.matchMedia("(pointer: fine)").matches) return
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
       targetCameraPosition.x = mouse.x * 3
       targetCameraPosition.y = mouse.y * 3
+    }
+
+    function resetMouse() {
+      targetCameraPosition.x = 0
+      targetCameraPosition.y = 0
+    }
+
+    function onContextLost(event) {
+      event.preventDefault()
+      clearTimeout(returnTimer)
+      cancelAnimationFrame(animationIdRef.current)
+      timelineRef.current?.kill()
+      transitionRef.current = false
+      setIsAnimating(false)
+      if (overlayRef.current) overlayRef.current.style.opacity = "1"
+    }
+
+    function onContextRestored() {
+      sphere.position.set(0, 0, 0)
+      sphere.scale.setScalar(1)
+      sphere.material.uniforms.uTransitionProgress.value = 0
+      reflector.material.uniforms.color.value.setRGB(.53, .53, .53)
+      camera.position.set(0, 0, 60)
+      resetMouse()
+      onVisibilityChange()
+    }
+
+    function renderStillFrame() {
+      if (!disposed && renderer && scene && camera && !renderer.getContext().isContextLost()) {
+        camera.lookAt(0, 0, 0)
+        renderer.render(scene, camera)
+        if (textureReady && !announcedReady) {
+          announcedReady = true
+          document.fonts.ready.then(() => {
+            if (!disposed) window.dispatchEvent(new Event("portfolio:ready"))
+          })
+        }
+      }
+    }
+
+    function onMotionChange() {
+      resetMouse()
+      if (reducedMotion.matches) {
+        timelineRef.current?.progress(1)
+        camera?.position.set(0, 0, 60)
+      }
+      onVisibilityChange()
+    }
+
+    function onVisibilityChange() {
+      cancelAnimationFrame(animationIdRef.current)
+      if (!document.hidden && !disposed) {
+        previousTime = performance.now()
+        animate(previousTime)
+      }
     }
 
     function onWindowResize() {
@@ -242,61 +317,75 @@ function RefinedHome() {
         window.innerWidth,
         window.innerHeight
       )
+      reflector?.getRenderTarget().setSize(
+        Math.max(1, Math.round(window.innerWidth * 0.5)),
+        Math.max(1, Math.round(window.innerHeight * 0.5))
+      )
+      renderStillFrame()
     }
 
-    function animate() {
-      if (
-        !sphereRef.current ||
-        !cameraRef.current ||
-        !rendererRef.current ||
-        !sceneRef.current
-      ) {
+    function animate(now = performance.now()) {
+      if (disposed || document.hidden || !renderer || renderer.getContext().isContextLost()) return
+      const delta = Math.min((now - previousTime) / 1000, 0.05)
+      previousTime = now
+      if (!reducedMotion.matches) {
+        sphere.material.uniforms.iTime.value += delta * 0.6
+        reflector.material.uniforms.iTime.value += delta * 0.9
+        // GSAP owns the camera during route transitions. Mouse parallax resumes afterward.
+        if (!transitionRef.current) {
+          const damping = 1 - Math.pow(0.97, delta * 60)
+          camera.position.x += (targetCameraPosition.x - camera.position.x) * damping
+          camera.position.y += (targetCameraPosition.y - camera.position.y) * damping
+        }
+      }
+      renderStillFrame()
+      if (!reducedMotion.matches || transitionRef.current) {
         animationIdRef.current = requestAnimationFrame(animate)
-        return
       }
-      sphereRef.current.material.uniforms.iTime.value += 0.01
-      if (reflectorRef.current?.material.uniforms.iTime) {
-        reflectorRef.current.material.uniforms.iTime.value += 0.015
-      }
-      cameraRef.current.position.x +=
-        (targetCameraPosition.x - cameraRef.current.position.x) * 0.03
-      cameraRef.current.position.y +=
-        (targetCameraPosition.y - cameraRef.current.position.y) * 0.03
-      cameraRef.current.lookAt(
-        sphereRef.current.position.x,
-        sphereRef.current.position.y,
-        sphereRef.current.position.z
-      )
-      controls.update()
-      rendererRef.current.render(sceneRef.current, cameraRef.current)
-      animationIdRef.current = requestAnimationFrame(animate)
     }
 
     init()
     animate()
 
     return () => {
+      disposed = true
+      clearTimeout(returnTimer)
+      timelineRef.current?.kill()
+      timelineRef.current = null
       window.removeEventListener("resize", onWindowResize)
       window.removeEventListener("mousemove", onMouseMove)
-      if (animationIdRef.current) cancelAnimationFrame(animationIdRef.current)
-      if (mountRef.current && rendererRef.current?.domElement) {
-        mountRef.current.removeChild(rendererRef.current.domElement)
-      }
-      rendererRef.current?.dispose()
+      window.removeEventListener("blur", resetMouse)
+      document.removeEventListener("mouseleave", resetMouse)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+      reducedMotion.removeEventListener("change", onMotionChange)
+      renderer?.domElement.removeEventListener("webglcontextlost", onContextLost)
+      renderer?.domElement.removeEventListener("webglcontextrestored", onContextRestored)
+      cancelAnimationFrame(animationIdRef.current)
+      sphere?.geometry.dispose()
+      sphere?.material.dispose()
+      reflector?.geometry.dispose()
+      reflector?.dispose()
+      roughnessMap?.dispose()
+      renderer?.dispose()
+      if (renderer?.domElement.parentNode === mount) mount.removeChild(renderer.domElement)
+      sceneRef.current = cameraRef.current = sphereRef.current = reflectorRef.current = rendererRef.current = null
     }
   }, [isFromOtherPage])
 
   /* ── navigation w/ transition ───────────────────────────────────── */
   const handleNavigateWithAnimation = useCallback(
     (path) => {
+      if (isAnimating || transitionRef.current) return
       if (
-        isAnimating ||
-        !sphereRef.current ||
-        !cameraRef.current ||
-        !reflectorRef.current
-      )
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+        !sphereRef.current || !cameraRef.current || !reflectorRef.current ||
+        !rendererRef.current || rendererRef.current.getContext().isContextLost()
+      ) {
+        navigate(path)
         return
+      }
       setIsAnimating(true)
+      transitionRef.current = true
 
       const sphere = sphereRef.current
       const camera = cameraRef.current
@@ -304,6 +393,7 @@ function RefinedHome() {
       const tl = gsap.timeline({
         onComplete: () => navigate(path, { state: { fromPage: "home" } }),
       })
+      timelineRef.current = tl
 
       if (overlayRef.current) {
         tl.to(overlayRef.current, { opacity: 0, duration: 0.5, ease: "power3.out" }, 0)
@@ -349,34 +439,8 @@ function RefinedHome() {
     [isAnimating, navigate]
   )
 
-  /* ── marquee content ────────────────────────────────────────────── */
-  const marqueeItems = [
-    ["Currently", "Available for Work · Q3 2026"],
-    ["Built with", "Three.js · GSAP"],
-    ["Latest project", "Temporal Workflow Agent"],
-    ["Open to", "Freelance · Contract · Full-time"],
-    ["Reach", "hoodaanubhav@gmail.com"],
-    ["Region", "Asia / Kolkata · GMT +5:30"],
-    ["Vol.", "01 / 2026"],
-  ]
-  const marqueeRow = (key) => (
-    <React.Fragment key={key}>
-      {marqueeItems.map(([k, v], i) => (
-        <React.Fragment key={`${key}-${i}`}>
-          <span>
-            {k}&nbsp;<b>{v}</b>
-          </span>
-          <span className="sep">/</span>
-        </React.Fragment>
-      ))}
-    </React.Fragment>
-  )
-
   return (
     <div className="refined-home">
-      {/* scoped styles for this page only */}
-      <style>{refinedCss}</style>
-
       {/* three.js canvas mount */}
       <div id="canvas-container" ref={mountRef}></div>
 
@@ -393,17 +457,17 @@ function RefinedHome() {
           {/* ───────────────── TOP BAR ───────────────── */}
           <header className="rh-topbar">
             <div className="rh-brand">
-              <div className="ah-mark">
+              <h1 className="ah-mark">
                 Anubhav
                 <br />
                 Hooda
-              </div>
+              </h1>
               <div className="role">
                 <b>Design&nbsp;Engineer</b>&nbsp;·&nbsp;WebGL&nbsp;·&nbsp;Interfaces
               </div>
             </div>
 
-            <nav className="rh-nav">
+            <nav className="rh-nav" aria-label="Main navigation">
               <button
                 type="button"
                 className="active"
@@ -433,38 +497,25 @@ function RefinedHome() {
 
             <div className="rh-meta-right">
               <div className="status-pill">
-                <span className="dot"></span>Available · Q3 2026
+                <span className="dot"></span>Open to opportunities
               </div>
-              <div>
-                <b>{clock}</b>&nbsp;·&nbsp;New Delhi
-              </div>
-              <div>28.61°N · 77.20°E</div>
+
             </div>
           </header>
 
           {/* ───────────────── STAGE ───────────────── */}
           <section className="rh-stage">
-            <div className="name-overlay">Anubhav&nbsp;Hooda</div>
-
-            <div className="fig t1">
-              <span className="num">FIG.&nbsp;01</span>
-              <span className="ln"></span>
-              <span>Holographic&nbsp;Noise&nbsp;·&nbsp;GLSL</span>
-            </div>
-            <div className="fig t2">
-              <span className="num">FIG.&nbsp;02</span>
-              <span className="ln"></span>
-              <span>Wet&nbsp;Stone&nbsp;Reflection</span>
-            </div>
+            <div className="name-overlay" aria-hidden="true">Anubhav&nbsp;Hooda</div>
 
             <div className="tag-block">
-              <div className="pre">A portfolio by Anubhav Hooda · Vol. 01 · 2026</div>
               <p className="tag">
-                I design and build <b>interactive interfaces</b> on the web —
-                usually sitting somewhere between a React app and a shader.
-                <br />
-                Currently selectively open to collaborations.
+                I design and build <b>web applications</b><br className="rh-desktop-break" />
+                {" "}and interactive experiences.
               </p>
+              <button className="rh-work-link" type="button" disabled={isAnimating}
+                onClick={() => handleNavigateWithAnimation("/projects")}>
+                View selected work <span aria-hidden="true">↗</span>
+              </button>
             </div>
           </section>
 
@@ -476,11 +527,8 @@ function RefinedHome() {
                 <b>{clock}</b>&nbsp;·&nbsp;<span>New&nbsp;Delhi,&nbsp;IN</span>
               </div>
             </div>
-            <div className="bb-center">
-              Stack&nbsp;·&nbsp;React&nbsp;·&nbsp;Next.js&nbsp;·&nbsp;Three.js&nbsp;·&nbsp;GSAP&nbsp;·&nbsp;TypeScript
-            </div>
             <div className="bb-right">
-              <div className="label">For Work</div>
+              <div className="label">Let’s work together</div>
               <a href="mailto:hoodaanubhav@gmail.com">hoodaanubhav@gmail.com</a>
               <div className="socials">
                 <a
@@ -502,22 +550,10 @@ function RefinedHome() {
           </footer>
         </div>
 
-        {/* edge labels */}
-        <div className="rh-edge-l">FIG. 01 · ANUBHAV HOODA — Vol. 01 / 2026</div>
-        <div className="rh-edge-r">SESSION ACTIVE · WEBGL ENABLED · 60FPS</div>
-
         {/* hairline frame w/ corner ticks */}
         <div className="rh-frame-edge">
           <span></span>
           <span></span>
-        </div>
-
-        {/* bottom marquee */}
-        <div className="rh-marquee-strip">
-          <div className="rh-marquee">
-            {marqueeRow("a")}
-            {marqueeRow("b")}
-          </div>
         </div>
 
         {/* film grain */}
@@ -528,308 +564,3 @@ function RefinedHome() {
 }
 
 export default RefinedHome
-
-/* ───────────────────────────────────────────────────────────────────
- * Scoped CSS — everything is namespaced under .refined-home so it
- * cannot leak into Projects/Services or fight with App.css.
- * ───────────────────────────────────────────────────────────────────*/
-const refinedCss = `
-.refined-home { background: #000; color: #fff; min-height: 100vh; }
-.refined-home * { box-sizing: border-box; }
-.refined-home { font-family: "jbm", ui-monospace, monospace; cursor: crosshair; }
-
-.refined-home .rh-toplight {
-  position: fixed; top: 0; left: 0; width: 100%; height: 50%;
-  z-index: 2; pointer-events: none;
-  background: radial-gradient(ellipse 70% 50% at 50% -10%,
-    rgba(160, 200, 255, 0.18) 0%,
-    rgba(100, 140, 255, 0.06) 30%,
-    transparent 70%);
-}
-
-.refined-home .rh-grain {
-  position: fixed; inset: 0; z-index: 30; pointer-events: none;
-  opacity: 0.05; mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-}
-
-.refined-home .rh-frame-edge {
-  position: fixed; inset: 16px; z-index: 10;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  pointer-events: none;
-}
-.refined-home .rh-frame-edge::before, .refined-home .rh-frame-edge::after,
-.refined-home .rh-frame-edge > span:nth-child(1),
-.refined-home .rh-frame-edge > span:nth-child(2) {
-  content: ""; position: absolute; width: 12px; height: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-}
-.refined-home .rh-frame-edge::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
-.refined-home .rh-frame-edge::after  { top: -1px; right: -1px; border-left: 0; border-bottom: 0; }
-.refined-home .rh-frame-edge > span:nth-child(1) { bottom: -1px; left: -1px; border-right: 0; border-top: 0; }
-.refined-home .rh-frame-edge > span:nth-child(2) { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
-
-.refined-home .rh-overlay {
-  position: relative; z-index: 4;
-  width: 100vw; height: 100vh;
-  pointer-events: none;
-}
-.refined-home .rh-overlay > * { pointer-events: auto; }
-.refined-home .rh-overlay .rh-toplight,
-.refined-home .rh-overlay .rh-grain,
-.refined-home .rh-overlay .rh-frame-edge { pointer-events: none; }
-
-.refined-home .rh-frame {
-  position: relative; z-index: 11;
-  width: 100vw; height: 100vh;
-  padding: 36px 48px;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  pointer-events: none;
-}
-.refined-home .rh-frame > * { pointer-events: auto; }
-
-.refined-home .rh-topbar {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: start;
-  gap: 32px;
-}
-
-.refined-home .rh-brand { display: flex; flex-direction: column; gap: 8px; }
-.refined-home .rh-brand .ah-mark {
-  font-family: "bebas";
-  font-size: 56px;
-  line-height: 0.86;
-  letter-spacing: 0.01em;
-  color: #fff;
-}
-.refined-home .rh-brand .role {
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
-  margin-top: 6px;
-}
-.refined-home .rh-brand .role b { color: #fff; font-weight: 500; }
-
-.refined-home .rh-nav {
-  display: flex; gap: 36px;
-  align-items: center;
-  justify-self: center;
-}
-.refined-home .rh-nav a,
-.refined-home .rh-nav button {
-  background: none; border: 0; cursor: pointer;
-  font-family: inherit;
-  text-decoration: none;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 12px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  position: relative;
-  padding: 8px 0;
-  display: flex; align-items: baseline; gap: 8px;
-  transition: color 0.25s ease;
-}
-.refined-home .rh-nav a .ix,
-.refined-home .rh-nav button .ix {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.35);
-}
-.refined-home .rh-nav a::after,
-.refined-home .rh-nav button::after {
-  content: "";
-  position: absolute; bottom: 0; left: 0; right: 0;
-  height: 1px;
-  background: #fff;
-  transform: scaleX(0); transform-origin: left;
-  transition: transform 0.35s cubic-bezier(0.7, 0, 0.2, 1);
-}
-.refined-home .rh-nav a:hover,
-.refined-home .rh-nav button:hover { color: #fff; }
-.refined-home .rh-nav a:hover::after,
-.refined-home .rh-nav button:hover::after { transform: scaleX(1); }
-.refined-home .rh-nav .active { color: #fff; }
-.refined-home .rh-nav .active::after { transform: scaleX(1); }
-.refined-home .rh-nav button:disabled { opacity: 0.55; cursor: default; }
-
-.refined-home .rh-meta-right {
-  justify-self: end;
-  display: flex; flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
-}
-.refined-home .rh-meta-right b { color: #fff; font-weight: 500; }
-.refined-home .rh-meta-right .status-pill {
-  display: flex; align-items: center; gap: 10px;
-  padding: 6px 12px;
-  border: 1px solid rgba(124, 243, 161, 0.4);
-  border-radius: 999px;
-  background: rgba(124, 243, 161, 0.05);
-  color: #fff;
-  font-size: 10px; letter-spacing: 0.22em;
-}
-.refined-home .rh-meta-right .status-pill .dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: #7cf3a1; box-shadow: 0 0 10px #7cf3a1;
-  animation: rh-pulse 2s ease-in-out infinite;
-}
-@keyframes rh-pulse { 50% { opacity: 0.45; } }
-
-.refined-home .rh-stage { position: relative; align-self: stretch; }
-
-.refined-home .name-overlay {
-  position: absolute;
-  left: 50%; transform: translateX(-50%);
-  top: 8%;
-  font-family: "bebas";
-  font-size: clamp(120px, 16vw, 240px);
-  line-height: 0.88;
-  letter-spacing: -0.005em;
-  text-transform: uppercase;
-  color: transparent;
-  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.16);
-  pointer-events: none;
-  white-space: nowrap;
-}
-
-.refined-home .tag-block {
-  position: absolute;
-  left: 50%; bottom: 6%;
-  transform: translateX(-50%);
-  text-align: center;
-  max-width: 640px;
-  pointer-events: auto;
-}
-.refined-home .tag-block .pre {
-  font-size: 10px;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: rgba(180, 210, 255, 0.7);
-  margin-bottom: 14px;
-}
-.refined-home .tag-block .pre::before { content: "— "; color: rgba(255,255,255,0.35); }
-.refined-home .tag-block .pre::after  { content: " —"; color: rgba(255,255,255,0.35); }
-.refined-home .tag-block .tag {
-  font-size: 15px;
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.9);
-  letter-spacing: 0.02em;
-}
-.refined-home .tag-block .tag b { color: #fff; font-weight: 500; }
-
-.refined-home .fig {
-  position: absolute;
-  font-size: 10px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.4);
-  pointer-events: none;
-  display: flex; align-items: center; gap: 8px;
-}
-.refined-home .fig .num {
-  color: rgba(255, 255, 255, 0.85);
-  font-family: "bebas";
-  font-size: 13px;
-  letter-spacing: 0.04em;
-}
-.refined-home .fig .ln {
-  width: 36px; height: 1px;
-  background: rgba(255, 255, 255, 0.3);
-}
-.refined-home .fig.t1 { top: 30%; left: 16%; }
-.refined-home .fig.t2 { top: 64%; right: 16%; flex-direction: row-reverse; }
-
-.refined-home .rh-bottombar {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  align-items: end;
-  gap: 24px;
-}
-.refined-home .bb-left {
-  font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
-  line-height: 1.7;
-}
-.refined-home .bb-left b { color: #fff; font-weight: 500; font-family: "jbm"; letter-spacing: 0.1em; }
-.refined-home .bb-left .row { display: flex; justify-content: space-between; gap: 24px; max-width: 240px; }
-
-.refined-home .bb-center {
-  text-align: center;
-  font-size: 10px; letter-spacing: 0.32em; text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.refined-home .bb-right {
-  justify-self: end;
-  display: flex; flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
-.refined-home .bb-right .label {
-  font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.4);
-  margin-bottom: 2px;
-}
-.refined-home .bb-right a {
-  color: #fff;
-  font-size: 13px;
-  text-decoration: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  padding-bottom: 2px;
-  transition: border-color 0.25s ease;
-}
-.refined-home .bb-right a:hover { border-color: #fff; }
-.refined-home .bb-right .socials { display: flex; gap: 18px; margin-top: 6px; }
-.refined-home .bb-right .socials a {
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  border: 0;
-  color: rgba(255, 255, 255, 0.6);
-  transition: color 0.25s ease;
-}
-.refined-home .bb-right .socials a::after { content: " ↗"; color: rgba(255,255,255,0.3); }
-.refined-home .bb-right .socials a:hover { color: #fff; }
-
-.refined-home .rh-edge-l, .refined-home .rh-edge-r {
-  position: fixed; top: 50%; z-index: 11;
-  font-size: 10px;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.35);
-  transform-origin: center;
-  pointer-events: none;
-}
-.refined-home .rh-edge-l { left: 30px; transform: translateY(-50%) rotate(-90deg); }
-.refined-home .rh-edge-r { right: 30px; transform: translateY(-50%) rotate(90deg); }
-
-.refined-home .rh-marquee-strip {
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  height: 26px;
-  overflow: hidden;
-  z-index: 9;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(0, 0, 0, 0.5);
-  pointer-events: none;
-}
-.refined-home .rh-marquee {
-  display: flex; gap: 56px;
-  white-space: nowrap;
-  animation: rh-scroll 70s linear infinite;
-  padding: 7px 0;
-  font-size: 10px;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.4);
-}
-.refined-home .rh-marquee b { color: #fff; font-weight: 500; }
-.refined-home .rh-marquee .sep { color: rgba(255, 255, 255, 0.18); }
-@keyframes rh-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-`

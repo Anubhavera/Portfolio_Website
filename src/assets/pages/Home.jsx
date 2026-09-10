@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { WaterReflector } from "../components/WaterReflector"
@@ -21,12 +21,12 @@ function Home() {
   const rendererRef = useRef(null)
   const animationIdRef = useRef(null)
   const [isAnimating, setIsAnimating] = useState(false)
-  const [isInitialized, setIsInitialized] = useState(false)
 
   // Get initial state from location
   const isFromOtherPage = location.state?.fromPage
 
   useEffect(() => {
+    const mount = mountRef.current
     // Ensure mountRef is ready before initializing
     if (!mountRef.current) {
       console.warn("Mount ref not ready")
@@ -170,7 +170,6 @@ function Home() {
         window.addEventListener("resize", onWindowResize)
         window.addEventListener("mousemove", onMouseMove)
         
-        setIsInitialized(true)
         
         // If coming from another page, trigger zoom-out animation after a delay
         if (isFromOtherPage) {
@@ -306,8 +305,8 @@ function Home() {
       if (animationIdRef.current) {
         cancelAnimationFrame(animationIdRef.current)
       }
-      if (mountRef.current && rendererRef.current?.domElement) {
-        mountRef.current.removeChild(rendererRef.current.domElement)
+      if (mount && rendererRef.current?.domElement?.parentNode === mount) {
+        mount.removeChild(rendererRef.current.domElement)
       }
       rendererRef.current?.dispose()
     }
@@ -319,7 +318,6 @@ function Home() {
 
     const sphere = sphereRef.current
     const camera = cameraRef.current
-    const reflector = reflectorRef.current
 
     const tl = gsap.timeline({
       onComplete: () => {
