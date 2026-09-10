@@ -44,7 +44,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid #dfcaff; outline-offs
 @media (max-width: 760px) {
   body { overflow-x: hidden; overflow-y: auto; }
   .refined-home { min-height: 100svh; }
-  .refined-home .rh-overlay { width: 100%; height: auto; min-height: 100svh; }
+  .refined-home .rh-overlay { width: 100%; height: auto; min-height: 100svh; background: linear-gradient(transparent 58%, rgba(0,0,0,.6)); }
   .refined-home .rh-frame {
     width: 100%; height: auto; min-height: max(780px, 100svh);
     padding: 28px 24px; grid-template-rows: auto minmax(420px,1fr) auto;

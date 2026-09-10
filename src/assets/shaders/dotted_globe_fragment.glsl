@@ -1,5 +1,7 @@
 uniform vec2 iResolution;
 uniform float iTime;
+uniform bool uUseSurfaceProjection;
+varying vec4 vSurfaceClip;
 uniform float uTransitionProgress; // 0 = solid, 1 = dotted wireframe
 
 varying vec2 vUv;
@@ -82,7 +84,13 @@ vec4 getDottedGlobe(vec2 uv, vec3 normal) {
 
 void main() {
     // Get both effects
-    vec4 solidColor = getSolidColor(gl_FragCoord.xy);
+    // Sample the same surface color in the main and reflected cameras. Using
+    // reflection-target pixels here changes the pattern and washes out the mirror.
+    vec2 surfaceCoord = gl_FragCoord.xy;
+    if (uUseSurfaceProjection) {
+        surfaceCoord = (vSurfaceClip.xy / vSurfaceClip.w * 0.5 + 0.5) * iResolution;
+    }
+    vec4 solidColor = getSolidColor(surfaceCoord);
     
     // Calculate normal for dotted effect
     vec3 normal = normalize(vNormal);
@@ -96,5 +104,8 @@ void main() {
     vec3 finalColor = mix(solidColor.rgb, dottedColor.rgb, blend);
     float finalAlpha = mix(1.0, dottedColor.a, blend);
     
-    gl_FragColor = vec4(finalColor, finalAlpha);
+    // These artistic colors were authored in display space. Store linear color
+    // in reflection targets and encode only when drawing to the screen.
+    gl_FragColor = sRGBTransferEOTF(vec4(finalColor, finalAlpha));
+    #include <colorspace_fragment>
 }

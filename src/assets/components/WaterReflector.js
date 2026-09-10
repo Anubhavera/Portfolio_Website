@@ -1,5 +1,6 @@
 
 import {
+  AdditiveBlending,
   Color,
   Matrix4,
   Mesh,
@@ -56,7 +57,10 @@ class WaterReflector extends Mesh {
       name: (shader.name !== undefined) ? shader.name : 'unspecified',
       uniforms: UniformsUtils.clone(shader.uniforms),
       fragmentShader: shader.fragmentShader,
-      vertexShader: shader.vertexShader
+      vertexShader: shader.vertexShader,
+      transparent: true,
+      blending: AdditiveBlending,
+      depthWrite: false
     });
 
     material.uniforms['tDiffuse'].value = renderTarget.texture;
@@ -194,126 +198,58 @@ class WaterReflector extends Mesh {
 }
 
 WaterReflector.ReflectorShader = {
-
   name: 'WaterReflectorShader',
-
   uniforms: {
-
-    'color': {
-      value: null
-    },
-
-    'tDiffuse': {
-      value: null
-    },
-
-    'textureMatrix': {
-      value: null
-    },
-
-    'tRoughness': {
-      value: null
-    },
-
-    'iTime': {
-      value: 0.0
-    }
-
+    color: { value: null },
+    tDiffuse: { value: null },
+    textureMatrix: { value: null },
+    iTime: { value: 0 },
   },
-
   vertexShader: /* glsl */`
-		uniform mat4 textureMatrix;
-		varying vec4 vUv;
-        varying vec2 vSurfUv; // Use standard UVs for roughness map
-
-		#include <common>
-		#include <logdepthbuf_pars_vertex>
-
-		void main() {
-            vSurfUv = uv; // Pass standard UVs
-			vUv = textureMatrix * vec4( position, 1.0 );
-
-			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-
-			#include <logdepthbuf_vertex>
-
-		}`,
-
+    uniform mat4 textureMatrix;
+    varying vec4 vUv;
+    varying vec2 vSurfUv;
+    varying vec3 vWorldPosition;
+    #include <common>
+    #include <logdepthbuf_pars_vertex>
+    void main() {
+      vSurfUv = uv;
+      vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+      vUv = textureMatrix * vec4(position, 1.0);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      #include <logdepthbuf_vertex>
+    }
+  `,
   fragmentShader: /* glsl */`
-		uniform vec3 color;
-		uniform sampler2D tDiffuse;
-        uniform sampler2D tRoughness;
-        uniform float iTime;
-        
-		varying vec4 vUv;
-        varying vec2 vSurfUv;
+    uniform vec3 color;
+    uniform sampler2D tDiffuse;
+    uniform float iTime;
+    varying vec4 vUv;
+    varying vec2 vSurfUv;
+    varying vec3 vWorldPosition;
+    #include <logdepthbuf_pars_fragment>
 
-		#include <logdepthbuf_pars_fragment>
-
-		float blendOverlay( float base, float blend ) {
-			return( base < 0.5 ? ( 2.0 * base * blend ) : ( 1.0 - 2.0 * ( 1.0 - base ) * ( 1.0 - blend ) ) );
-		}
-
-		vec3 blendOverlay( vec3 base, vec3 blend ) {
-			return vec3( blendOverlay( base.r, blend.r ), blendOverlay( base.g, blend.g ), blendOverlay( base.b, blend.b ) );
-		}
-
-		void main() {
-			#include <logdepthbuf_fragment>
-            
-            // Sample Texture (Ground)
-            vec4 texColor = texture2D(tRoughness, vSurfUv * 4.0);
-            float roughness = texColor.r; // Assume Texture R channel is roughness/height
-            
-            // Calculate pseudo-normal for distortion (Bump Mapping)
-            float offset = 0.01; // Sample offset
-            float h = roughness;
-            float h_right = texture2D(tRoughness, (vSurfUv * 4.0) + vec2(offset, 0.0)).r;
-            float h_up    = texture2D(tRoughness, (vSurfUv * 4.0) + vec2(0.0, offset)).r;
-            
-            // Distort normalized projective UVs gently, so the sphere remains recognizable.
-            vec2 ripple = vec2(
-                sin(vSurfUv.y * 110.0 + iTime * 0.65),
-                cos(vSurfUv.x * 95.0 + iTime * 0.5)
-            ) * 0.00065;
-            vec2 distortion = vec2(h - h_right, h - h_up) * 0.012 + ripple;
-            
-            // Projective lookup with distortion
-            vec4 coord = vUv;
-            coord.xy += distortion * coord.w;
-            
-			vec4 base = texture2DProj( tDiffuse, coord );
-            
-            // "Wet Stone" Logic
-            // 1. Floor Color: The stone itself (darkened)
-            vec3 floorColor = texColor.rgb * 0.04; // Very dark stone
-            
-            // 2. Reflection Mask: Smooth parts reflect, Rough parts don't
-            float reflectionIntensity = 1.0 - roughness;
-            reflectionIntensity = mix(0.28, 0.95, pow(reflectionIntensity, 1.4)); // Wet patches retain a legible reflection.
-            
-            // 3. Combine: Floor + Reflection
-            vec3 finalColor = floorColor + base.rgb * reflectionIntensity;
-            
-            // 4. Tint with Reflector Color (optional)
-            // We use blendOverlay to tint the reflection if needed, or just partial mix
-            // finalColor = blendOverlay(finalColor, color); // This might be too strong
-            
-            // Multiply by color to allow fading/tinting
-            finalColor *= color;
-
-            
-            // 5. Vignette (Blend edges to black)
-            float dist = distance(vSurfUv, vec2(0.5));
-            float vignette = 1.0 - smoothstep(0.2, 0.5, dist);
-            finalColor *= vignette;
-            
-			gl_FragColor = vec4( finalColor, 1.0 );
-
-			#include <tonemapping_fragment>
-			#include <colorspace_fragment>
-
-		}`
+    void main() {
+      #include <logdepthbuf_fragment>
+      // The stone bed is a separate displaced mesh. This plane is the water
+      // between the raised stones, so its reflection stays sharp and legible.
+      vec2 p = vWorldPosition.xz;
+      vec2 ripple = vec2(
+        sin(p.y * 0.45 + p.x * 0.08 + iTime * 0.28),
+        sin(p.x * 0.38 - p.y * 0.12 + iTime * 0.22)
+      ) * 0.00018;
+      vec2 projectedUv = vUv.xy / vUv.w + ripple;
+      vec3 reflected = texture2D(tDiffuse, projectedUv).rgb;
+      vec3 viewDirection = normalize(cameraPosition - vWorldPosition);
+      float grazing = pow(1.0 - clamp(viewDirection.y, 0.0, 1.0), 3.0);
+      float edgeFade = 1.0 - smoothstep(0.28, 0.5, distance(vSurfUv, vec2(0.5)));
+      float poolFalloff = exp(-dot(p / vec2(48.0, 65.0), p / vec2(48.0, 65.0)));
+      vec3 result = reflected * mix(0.65, 1.15, grazing) * color * edgeFade * poolFalloff;
+      gl_FragColor = vec4(result, 0.88);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }
+  `,
 };
 
 export { WaterReflector };

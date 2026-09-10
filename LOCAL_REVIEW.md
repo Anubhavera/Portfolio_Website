@@ -35,3 +35,18 @@ npm run build
 All passed on September 10, 2026; nine automated tests cover loader readiness, failed startup, session replay, denied storage, and reduced-motion behavior. Browser checks covered desktop, 390px and 320px widths, project images/scrolling, Home–Work–About navigation, loading reveal, reduced motion, and blocked app download recovery.
 
 The production build still reports a large JavaScript chunk (about 745 kB, 213 kB gzip) and outdated Browserslist data. No dependency upgrades were mixed into this visual pass. Mobile checks use browser emulation, not a physical phone; low-end GPU performance still needs device testing.
+
+## Water follow-up (local)
+
+The reviewed baseline is on `main` at `3919b44`. The water follow-up is isolated on `refinement/water-surface`, available at the same port 5174 preview.
+
+The reference comparison showed that surface relief, localized highlights, and a sharp reflection interrupted by raised stone were missing from the first pass. The current treatment uses a separate displaced stone bed and shallow planar reflection surface:
+
+- Existing rock height, roughness, and normal data now drive actual geometry and a lit standard material. High stones physically interrupt the reflection. The desktop ground uses 160 subdivisions per axis, and mobile uses 96.
+- The shallow water adds reflected light over the submerged stone, with slight slow ripples. It no longer uses the earlier blur kernel or coarse repeated height texture as its visible ground.
+- A localized cool light catches the stone relief beneath the sphere, with the outer floor fading to black. Ground and water share the transition fade.
+- Sphere colors use the same source-camera projection in both passes. Display-authored shader colors are decoded for the linear reflection target and encoded at screen output, avoiding the washed-out mirror.
+- The original source material maps remain untouched. `scripts/prepare-ground-textures.py` uses Pillow to prepare a 1024px normal map and a 512px packed height/roughness map, about 573 KiB combined. Generated runtime assets are checked in; running the preparation script is optional.
+- The loader waits for both material maps to settle. Cleanup disposes both textures, the stone geometry/material, and the reflection resources. Mobile copy has additional contrast over the water.
+
+Validation: lint, nine existing loader tests, and the production build pass. Browser checks cover shader compilation, desktop parallax, mobile at 390px with device pixel ratio 2, reduced motion, and navigation back to Home. Real-device GPU performance remains unmeasured.

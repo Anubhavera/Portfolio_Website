@@ -5,7 +5,9 @@ import { useNavigate, useLocation } from "react-router-dom"
 import gsap from "gsap"
 import dottedFragmentShader from "../shaders/dotted_globe_fragment.glsl"
 import dottedVertexShader from "../shaders/dotted_globe_vertex.glsl"
-import roughnessMapImg from "../bg.jpg"
+import roughnessMapImg from "../ground/stone-surface.webp"
+import normalMapImg from "../ground/stone-normal.webp"
+import { createWetStoneGround } from "../components/WetStoneGround"
 
 /**
  * RefinedHome
@@ -52,7 +54,7 @@ function RefinedHome() {
     const mount = mountRef.current
     if (!mount) return
 
-    let camera, scene, renderer, sphere, reflector, roughnessMap
+    let camera, scene, renderer, sphere, reflector, roughnessMap, normalMap, ground
     let returnTimer
     let previousTime = performance.now()
     let disposed = false
@@ -90,6 +92,8 @@ function RefinedHome() {
           fragmentShader: dottedFragmentShader,
           uniforms: {
             iTime: { value: 0.0 },
+            uSurfaceProjection: { value: new THREE.Matrix4() },
+            uUseSurfaceProjection: { value: true },
             iResolution: {
               value: new THREE.Vector2(window.innerWidth, window.innerHeight),
             },
@@ -110,34 +114,40 @@ function RefinedHome() {
         sphereRef.current = sphere
 
         const textureLoader = new THREE.TextureLoader()
-        roughnessMap = textureLoader.load(roughnessMapImg, () => {
-          if (disposed) roughnessMap.dispose()
-          else { textureReady = true; renderStillFrame() }
-        }, undefined, () => {
-          textureReady = true
+        let pendingTextures = 2
+        const onTextureSettled = () => {
+          if (disposed) return
+          textureReady = --pendingTextures === 0
           renderStillFrame()
-        })
-        roughnessMap.wrapS = THREE.RepeatWrapping
-        roughnessMap.wrapT = THREE.RepeatWrapping
-        roughnessMap.repeat.set(4, 4)
+        }
+        roughnessMap = textureLoader.load(roughnessMapImg, onTextureSettled, undefined, onTextureSettled)
+        normalMap = textureLoader.load(normalMapImg, onTextureSettled, undefined, onTextureSettled)
+        for (const texture of [roughnessMap, normalMap]) {
+          texture.wrapS = texture.wrapT = THREE.RepeatWrapping
+          texture.repeat.set(0.8, 0.8)
+          texture.offset.set(0.12, 0.17)
+          texture.colorSpace = THREE.NoColorSpace
+        }
 
         const reflectorGeometry = new THREE.PlaneGeometry(100, 100)
         reflector = new WaterReflector(reflectorGeometry, {
-          color: new THREE.Color(isFromOtherPage ? 0x000000 : 0x888888),
+          color: new THREE.Color().setScalar(isFromOtherPage ? 0 : 0.53),
           textureWidth: window.innerWidth * 0.5,
           textureHeight: window.innerHeight * 0.5,
           clipBias: 0.003,
         })
-        if (reflector.material.uniforms.tRoughness) {
-          reflector.material.uniforms.tRoughness.value = roughnessMap
-        }
         reflector.material.uniforms.iTime = { value: 0 }
         reflector.position.y = -11.5
         reflector.rotation.x = -Math.PI / 2
         scene.add(reflector)
         reflectorRef.current = reflector
+        ground = createWetStoneGround(roughnessMap, normalMap, reflector.material.uniforms.color)
+        scene.add(ground)
+        const poolLight = new THREE.PointLight(0xd8e8ff, 850, 60, 2)
+        poolLight.position.set(0, -7.5, -12)
+        scene.add(poolLight)
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.3))
+        scene.add(new THREE.AmbientLight(0xffffff, 0.1))
 
         const topPointLight = new THREE.PointLight(0xffffff, 2.5, 100)
         topPointLight.position.set(0, 35, 10)
@@ -156,7 +166,7 @@ function RefinedHome() {
         rimLight.position.set(0, 10, -20)
         scene.add(rimLight)
 
-        const fillLight = new THREE.DirectionalLight(0xffffff, 0.4)
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.2)
         fillLight.position.set(0, 5, 30)
         scene.add(fillLight)
 
@@ -168,6 +178,10 @@ function RefinedHome() {
         renderer.setSize(window.innerWidth, window.innerHeight)
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
         renderer.setClearColor(0x000000, 1)
+        // Reduce grazing-angle texture shimmer without increasing texture size.
+        for (const texture of [roughnessMap, normalMap]) {
+          texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy())
+        }
 
         mount.appendChild(renderer.domElement)
         rendererRef.current = renderer
@@ -281,6 +295,10 @@ function RefinedHome() {
     function renderStillFrame() {
       if (!disposed && renderer && scene && camera && !renderer.getContext().isContextLost()) {
         camera.lookAt(0, 0, 0)
+        camera.updateMatrixWorld()
+        sphere.material.uniforms.uSurfaceProjection.value.multiplyMatrices(
+          camera.projectionMatrix, camera.matrixWorldInverse
+        )
         renderer.render(scene, camera)
         if (textureReady && !announcedReady) {
           announcedReady = true
@@ -365,7 +383,10 @@ function RefinedHome() {
       sphere?.material.dispose()
       reflector?.geometry.dispose()
       reflector?.dispose()
+      ground?.geometry.dispose()
+      ground?.material.dispose()
       roughnessMap?.dispose()
+      normalMap?.dispose()
       renderer?.dispose()
       if (renderer?.domElement.parentNode === mount) mount.removeChild(renderer.domElement)
       sceneRef.current = cameraRef.current = sphereRef.current = reflectorRef.current = rendererRef.current = null
