@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import * as THREE from "three"
 import { WaterReflector } from "../components/WaterReflector"
-import { useNavigate, useLocation } from "react-router-dom"
+import { Link, useNavigate, useLocation } from "react-router-dom"
 import gsap from "gsap"
 import dottedFragmentShader from "../shaders/dotted_globe_fragment.glsl"
 import dottedVertexShader from "../shaders/dotted_globe_vertex.glsl"
 import roughnessMapImg from "../ground/stone-surface.webp"
 import normalMapImg from "../ground/stone-normal.webp"
 import { createWetStoneGround } from "../components/WetStoneGround"
+import MotionControl from "../components/MotionControl"
+import { isMotionPaused, subscribeToMotion } from "../components/motionPreference"
 
 /**
  * RefinedHome
@@ -60,7 +62,7 @@ function RefinedHome() {
     let disposed = false
     let textureReady = false
     let announcedReady = false
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
+    let unsubscribeMotion = () => {}
     transitionRef.current = Boolean(isFromOtherPage)
     const mouse = { x: 0, y: 0 }
     const targetCameraPosition = { x: 0, y: 0 }
@@ -191,7 +193,7 @@ function RefinedHome() {
         window.addEventListener("blur", resetMouse)
         document.addEventListener("mouseleave", resetMouse)
         document.addEventListener("visibilitychange", onVisibilityChange)
-        reducedMotion.addEventListener("change", onMotionChange)
+        unsubscribeMotion = subscribeToMotion(onMotionChange)
         renderer.domElement.addEventListener("webglcontextlost", onContextLost)
         renderer.domElement.addEventListener("webglcontextrestored", onContextRestored)
 
@@ -256,11 +258,11 @@ function RefinedHome() {
         { x: 0, y: 0, z: 60, duration: 1.2, ease: "power2.inOut" },
         0.1
       )
-      if (reducedMotion.matches) tl.progress(1)
+      if (isMotionPaused()) tl.progress(1)
     }
 
     function onMouseMove(event) {
-      if (reducedMotion.matches || !window.matchMedia("(pointer: fine)").matches) return
+      if (isMotionPaused() || !window.matchMedia("(pointer: fine)").matches) return
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
       targetCameraPosition.x = mouse.x * 3
@@ -311,7 +313,7 @@ function RefinedHome() {
 
     function onMotionChange() {
       resetMouse()
-      if (reducedMotion.matches) {
+      if (isMotionPaused()) {
         timelineRef.current?.progress(1)
         camera?.position.set(0, 0, 60)
       }
@@ -346,7 +348,7 @@ function RefinedHome() {
       if (disposed || document.hidden || !renderer || renderer.getContext().isContextLost()) return
       const delta = Math.min((now - previousTime) / 1000, 0.05)
       previousTime = now
-      if (!reducedMotion.matches) {
+      if (!isMotionPaused()) {
         sphere.material.uniforms.iTime.value += delta * 0.6
         reflector.material.uniforms.iTime.value += delta * 0.9
         // GSAP owns the camera during route transitions. Mouse parallax resumes afterward.
@@ -357,7 +359,7 @@ function RefinedHome() {
         }
       }
       renderStillFrame()
-      if (!reducedMotion.matches || transitionRef.current) {
+      if (!isMotionPaused() || transitionRef.current) {
         animationIdRef.current = requestAnimationFrame(animate)
       }
     }
@@ -375,7 +377,7 @@ function RefinedHome() {
       window.removeEventListener("blur", resetMouse)
       document.removeEventListener("mouseleave", resetMouse)
       document.removeEventListener("visibilitychange", onVisibilityChange)
-      reducedMotion.removeEventListener("change", onMotionChange)
+      unsubscribeMotion()
       renderer?.domElement.removeEventListener("webglcontextlost", onContextLost)
       renderer?.domElement.removeEventListener("webglcontextrestored", onContextRestored)
       cancelAnimationFrame(animationIdRef.current)
@@ -395,10 +397,13 @@ function RefinedHome() {
 
   /* ── navigation w/ transition ───────────────────────────────────── */
   const handleNavigateWithAnimation = useCallback(
-    (path) => {
+    (event, path) => {
+      // Keep native link behavior for new tabs, modified clicks, and copying URLs.
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      event.preventDefault()
       if (isAnimating || transitionRef.current) return
       if (
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+        isMotionPaused() ||
         !sphereRef.current || !cameraRef.current || !reflectorRef.current ||
         !rendererRef.current || rendererRef.current.getContext().isContextLost()
       ) {
@@ -478,7 +483,7 @@ function RefinedHome() {
           {/* ───────────────── TOP BAR ───────────────── */}
           <header className="rh-topbar">
             <div className="rh-brand">
-              <h1 className="ah-mark">
+              <h1 className="ah-mark" data-route-heading tabIndex={-1}>
                 Anubhav
                 <br />
                 Hooda
@@ -489,28 +494,27 @@ function RefinedHome() {
             </div>
 
             <nav className="rh-nav" aria-label="Main navigation">
-              <button
-                type="button"
+              <Link
+                to="/"
                 className="active"
-                onClick={() => navigate("/")}
-                disabled={isAnimating}
+                aria-current="page"
               >
                 <span className="ix">00</span>Home
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNavigateWithAnimation("/projects")}
-                disabled={isAnimating}
+              </Link>
+              <Link
+                to="/projects"
+                onClick={(event) => handleNavigateWithAnimation(event, "/projects")}
+                aria-disabled={isAnimating}
               >
                 <span className="ix">01</span>Work
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNavigateWithAnimation("/services")}
-                disabled={isAnimating}
+              </Link>
+              <Link
+                to="/services"
+                onClick={(event) => handleNavigateWithAnimation(event, "/services")}
+                aria-disabled={isAnimating}
               >
                 <span className="ix">02</span>About
-              </button>
+              </Link>
               <a href="mailto:hoodaanubhav@gmail.com">
                 <span className="ix">03</span>Contact
               </a>
@@ -525,7 +529,7 @@ function RefinedHome() {
           </header>
 
           {/* ───────────────── STAGE ───────────────── */}
-          <section className="rh-stage">
+          <main className="rh-stage" id="main-content" tabIndex={-1}>
             <div className="name-overlay" aria-hidden="true">Anubhav&nbsp;Hooda</div>
 
             <div className="tag-block">
@@ -533,12 +537,12 @@ function RefinedHome() {
                 I design and build <b>web applications</b><br className="rh-desktop-break" />
                 {" "}and interactive experiences.
               </p>
-              <button className="rh-work-link" type="button" disabled={isAnimating}
-                onClick={() => handleNavigateWithAnimation("/projects")}>
+              <Link className="rh-work-link" to="/projects" aria-disabled={isAnimating}
+                onClick={(event) => handleNavigateWithAnimation(event, "/projects")}>
                 View selected work <span aria-hidden="true">↗</span>
-              </button>
+              </Link>
             </div>
-          </section>
+          </main>
 
           {/* ───────────────── BOTTOM BAR ───────────────── */}
           <footer className="rh-bottombar">
@@ -566,6 +570,7 @@ function RefinedHome() {
                 >
                   GitHub
                 </a>
+                <MotionControl />
               </div>
             </div>
           </footer>

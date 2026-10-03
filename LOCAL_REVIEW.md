@@ -1,5 +1,7 @@
 # Local portfolio refinement
 
+**Current review:** the original scene and wet-stone follow-up are merged into `main` at `a97760c`. New local navigation, project-preview, accessibility, and motion-control changes are on `refinement/quality-of-life`; see [QUALITY_OF_LIFE_REVIEW.md](QUALITY_OF_LIFE_REVIEW.md). Port 5174 shows this new pass. The historical notes below describe the earlier work.
+
 The reviewed refinement was prepared on `refinement/original-scene` for integration into `main`. Further visual experiments should use a separate branch or worktree so they can be reviewed locally.
 
 ## Preview

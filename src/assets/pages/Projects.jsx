@@ -1,12 +1,14 @@
-import { useNavigate } from "react-router-dom"
+import { useEffect, useRef, useState } from "react"
+import { Link } from "react-router-dom"
 import useDottedScene from "../components/useDottedScene"
+import PageNavigation from "../components/PageNavigation"
 // Project data
 const projects = [
   {
     title: "Sundown Studios",
     description: "A studio website project exploring motion, layout, and responsive frontend development.",
     tags: ["React", "GSAP", "Responsive Design", "Lenis"],
-    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    source: "https://github.com/Anubhavera/Sundown_Studios",
     image: "/sundown.png",
     link: "https://sundown-studios-snowy.vercel.app/"
   },
@@ -14,27 +16,27 @@ const projects = [
     title: "Sprintly",
     description: "A multi-tenant Kanban app with a React and TypeScript frontend and a Django/GraphQL backend.",
     tags: ["React", "Django", "GraphQL", "TypeScript"],
-    gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+    source: "https://github.com/Anubhavera/Sprintly",
     image: "/sprintly.png"
   },
    {
     title: "Temporal Workflow Agent",
     description: "An experimental agent execution engine built around Temporal workflow orchestration.",
     tags: ["Temporal", "Architecture", "LLM", "React"],
-    gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+    source: "https://github.com/Anubhavera/Temporal-Workflow-Agent",
     image: "/temporal.png"
   }
 
 ]
 
 const Projects = () => {
-  const navigate = useNavigate()
   const mountRef = useDottedScene("projects")
+  const dialogRef = useRef(null)
+  const [preview, setPreview] = useState(null)
 
-  const handleBackToHome = () => {
-    // Navigate with state to trigger zoom-out animation
-    navigate("/", { state: { fromPage: 'projects' } })
-  }
+  useEffect(() => {
+    if (preview && !dialogRef.current.open) dialogRef.current.showModal()
+  }, [preview])
 
   return (
     <>
@@ -45,6 +47,7 @@ const Projects = () => {
       ></div>
       
       <main
+        id="main-content" tabIndex={-1}
         className="projects-page-content"
         style={{
           position: "relative",
@@ -62,14 +65,9 @@ const Projects = () => {
         }}
       >
         <div style={{ width: "100%", maxWidth: "900px", marginBottom: "2rem" }}>
-          <button 
-            onClick={handleBackToHome}
-            className="back-btn"
-          >
-            ← Back to Home
-          </button>
+          <PageNavigation />
           
-          <h1 className="page-title">Selected Work</h1>
+          <h1 className="page-title" data-route-heading tabIndex={-1}>Selected Work</h1>
           
           <p className="page-subtitle">
             Web applications, creative frontend development, and experiments in workflow orchestration.
@@ -78,14 +76,17 @@ const Projects = () => {
         
         <div className="projects-grid" style={{ maxWidth: "900px" }}>
           {projects.map((project, index) => (
-            <div 
+            <article
               key={index} 
               className="project-card"
               style={{ animationDelay: `${index * 0.08}s` }}
             >
-              <div className="project-card-image">
+              <button type="button" className="project-card-image project-preview-button"
+                aria-label={`Enlarge ${project.title} preview`} aria-haspopup="dialog"
+                onClick={() => setPreview(project)}>
                 <img src={project.image} alt={`${project.title} project preview`} loading="lazy" decoding="async" />
-              </div>
+                <span className="preview-hint" aria-hidden="true">View preview ↗</span>
+              </button>
 
               <div className="project-card-content">
                 <h2 className="project-card-title">{project.title}</h2>
@@ -95,12 +96,32 @@ const Projects = () => {
                     <span key={tagIndex} className="project-tag">{tag}</span>
                   ))}
                 </div>
-                {project.link && <a className="project-live-link" href={project.link} target="_blank" rel="noopener noreferrer">Visit live site <span aria-hidden="true">↗</span><span className="sr-only"> — {project.title}</span></a>}
+                <div className="project-actions">
+                  {project.link && <a className="project-live-link" href={project.link} target="_blank" rel="noopener noreferrer">Live site <span aria-hidden="true">↗</span><span className="sr-only"> — {project.title}, opens in a new tab</span></a>}
+                  <a className="project-live-link" href={project.source} target="_blank" rel="noopener noreferrer">Source code <span aria-hidden="true">↗</span><span className="sr-only"> — {project.title}, opens in a new tab</span></a>
+                </div>
               </div>
-            </div>
+            </article>
           ))}
         </div>
+        <footer className="page-next-step">
+          <p>Have a role or project in mind?</p>
+          <a href="mailto:hoodaanubhav@gmail.com">Let’s talk ↗</a>
+          <Link to="/services">About & capabilities →</Link>
+        </footer>
       </main>
+      <dialog className="project-preview-dialog" ref={dialogRef} aria-labelledby="preview-title"
+        onClose={() => setPreview(null)} onClick={(event) => {
+          if (event.target === event.currentTarget) dialogRef.current.close()
+        }}>
+        {preview && <div className="preview-inner">
+          <header><h2 id="preview-title">{preview.title}</h2>
+            <button type="button" onClick={() => dialogRef.current.close()} autoFocus>Close <span aria-hidden="true">×</span></button>
+          </header>
+          <img src={preview.image} alt={`${preview.title} full-size project preview`} />
+          <p>Project screenshot · <a href={preview.source} target="_blank" rel="noopener noreferrer">Explore source code ↗</a></p>
+        </div>}
+      </dialog>
       
       <style>{`
         @keyframes slideInFromLeft {

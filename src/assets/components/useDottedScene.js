@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import fragmentShader from '../shaders/dotted_globe_fragment.glsl'
 import vertexShader from '../shaders/dotted_globe_vertex.glsl'
+import { isMotionPaused, subscribeToMotion } from './motionPreference'
 
 // Both secondary pages share the original scene, with mirrored camera positions.
 export default function useDottedScene(page) {
@@ -14,7 +15,6 @@ export default function useDottedScene(page) {
     let previous = performance.now()
     let disposed = false
     let announced = false
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 300)
     const isServices = page === 'services'
@@ -62,7 +62,7 @@ export default function useDottedScene(page) {
         if (disposed || document.hidden || renderer.getContext().isContextLost()) return
         const delta = Math.min((now - previous) / 1000, 0.05)
         previous = now
-        if (!reducedMotion.matches) {
+        if (!isMotionPaused()) {
           material.uniforms.iTime.value += delta * 0.6
           sphere.rotation.y += delta * 0.12
         }
@@ -70,7 +70,7 @@ export default function useDottedScene(page) {
         camera.lookAt(0, 0, 0)
         renderer.render(scene, camera)
         announceReady()
-        if (!reducedMotion.matches) frame = requestAnimationFrame(render)
+        if (!isMotionPaused()) frame = requestAnimationFrame(render)
       }
       function resume() {
         cancelAnimationFrame(frame)
@@ -90,13 +90,13 @@ export default function useDottedScene(page) {
       }
       window.addEventListener('resize', resize)
       document.addEventListener('visibilitychange', resume)
-      reducedMotion.addEventListener('change', resume)
+      const unsubscribeMotion = subscribeToMotion(resume)
       renderer.domElement.addEventListener('webglcontextlost', lost)
       renderer.domElement.addEventListener('webglcontextrestored', resume)
       removeListeners = () => {
         window.removeEventListener('resize', resize)
         document.removeEventListener('visibilitychange', resume)
-        reducedMotion.removeEventListener('change', resume)
+        unsubscribeMotion()
         renderer.domElement.removeEventListener('webglcontextlost', lost)
         renderer.domElement.removeEventListener('webglcontextrestored', resume)
       }

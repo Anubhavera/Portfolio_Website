@@ -1,55 +1,24 @@
-import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import useDottedScene from "../components/useDottedScene"
-// Service categories data
+import PageNavigation from "../components/PageNavigation"
+// Keep capabilities focused on the work visitors can explore in the portfolio.
 const serviceCategories = [
   {
-    title: "DESIGN SERVICES",
-    services: ["Web Design", "App Design", "3D Design", "UI/UX Design", "Prototyping"]
+    title: "WEB APPLICATIONS",
+    services: ["React", "TypeScript", "Django", "GraphQL", "Database Design"]
   },
   {
-    title: "DEVELOPMENT SERVICES",
-    services: [
-      "Frontend Development",
-      "Backend Development",
-      "Full Stack",
-      "API Development",
-      "Database Design"
-    ]
+    title: "INTERACTIVE INTERFACES",
+    services: ["Three.js", "GSAP", "Responsive Design", "UI/UX Design"]
   },
   {
-    title: "TECHNOLOGIES",
-    services: [
-      "React",
-      "Next.js",
-      "Three.js",
-      "Node.js",
-      "Python",
-      "TypeScript",
-      "PostgreSQL",
-      "AWS",
-      "Firebase"
-    ]
-  },
-  {
-    title: "AI & MACHINE LEARNING",
-    services: [
-      "LLM Integration",
-      "Model Training",
-      "RAG Systems",
-      "Computer Vision",
-      "NLP"
-    ]
+    title: "WORKFLOW SYSTEMS",
+    services: ["Python", "Temporal", "LLM Integration", "API Development"]
   }
 ]
 
 const Services = () => {
-  const navigate = useNavigate()
   const mountRef = useDottedScene("services")
-
-  const handleBackToHome = () => {
-    // Navigate with state to trigger zoom-out animation
-    navigate("/", { state: { fromPage: 'services' } })
-  }
 
   return (
     <>
@@ -59,20 +28,15 @@ const Services = () => {
         style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%" }}
       ></div>
       
-      <main className="services-container">
+      <main className="services-container" id="main-content" tabIndex={-1}>
         <div 
           className="services-content"
           style={{ animation: "slideInFromRight 0.6s cubic-bezier(0.16, 1, 0.3, 1)" }}
         >
-          <button 
-            onClick={handleBackToHome}
-            className="back-btn"
-          >
-            ← Back to Home
-          </button>
+          <PageNavigation />
           
           <div className="services-intro">
-            <h1 className="page-title">About & Capabilities</h1>
+            <h1 className="page-title" data-route-heading tabIndex={-1}>About & Capabilities</h1>
             <p className="page-subtitle">I’m Anubhav, a developer based in New Delhi. I work across web applications, interactive graphics, and workflow orchestration.</p>
           </div>
 
@@ -99,6 +63,11 @@ const Services = () => {
               </div>
             </div>
           ))}
+          <footer className="page-next-step">
+            <p>See these skills in practice.</p>
+            <Link to="/projects">Explore selected work →</Link>
+            <a href="mailto:hoodaanubhav@gmail.com">Get in touch ↗</a>
+          </footer>
         </div>
       </main>
       
