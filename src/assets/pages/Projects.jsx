@@ -30,6 +30,7 @@ const projects = [
     title: "Argos (Local AI Platform)",
     description: "An on-device agent that keeps conversations in a provider-neutral format, so you can switch models mid-thread (Ollama or llama.cpp) and get a fidelity report of what carried over. Includes portable encrypted session files and approval-gated tool use. Case study; code is private.",
     tags: ["Python", "LLM", "Ollama", "llama.cpp", "React"],
+    image: "/argos.png",
     // TODO(anubhav): add repo link if made public
     source: null
   },
@@ -37,12 +38,14 @@ const projects = [
     title: "Adaptive-SLM",
     description: "A research prototype for on-device small language models: a C++ core with adaptive context compression, a Rust wrapper, a Colab training pipeline and an Android tool-calling harness. Phone inference is still a work in progress.",
     tags: ["C++", "Rust", "Android", "SLM", "Python"],
+    image: "/adaptive-slm.png",
     source: "https://github.com/Anubhavera/Adaptive-SLM"
   },
   {
     title: "Kiraydaar",
     description: "A multi-organization rent-management PWA: buildings, rooms, tenants, itemized monthly bills and payments, with an owner team per organization, WhatsApp bill sharing and CSV roster import. Tenant isolation uses Postgres row-level security. Case study; code is private.",
     tags: ["Next.js", "TypeScript", "Supabase", "PostgreSQL", "PWA"],
+    image: "/kiraydaar.png",
     // TODO(anubhav): add repo link if made public
     source: null
   },
@@ -50,7 +53,8 @@ const projects = [
     title: "LegalAI",
     description: "A research assistant that answers Indian constitutional and Supreme Court questions only from a curated corpus, with inline citations and an honest refusal when sources are missing. Not legal advice. Case study; code is private.",
     tags: ["FastAPI", "RAG", "Qdrant", "Gemini", "Next.js"],
-    link: "https://legalai.anubhavhooda.dev",
+    image: "/legalai.png",
+    // shortcut: no live link while the Render backend is down, restore link: "https://legalai.anubhavhooda.dev" once it answers
     // TODO(anubhav): add repo link if made public
     source: null
   }
