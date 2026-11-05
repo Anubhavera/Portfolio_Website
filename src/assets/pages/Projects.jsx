@@ -25,6 +25,34 @@ const projects = [
     tags: ["Temporal", "Architecture", "LLM", "React"],
     source: "https://github.com/Anubhavera/Temporal-Workflow-Agent",
     image: "/temporal.png"
+  },
+  {
+    title: "Argos (Local AI Platform)",
+    description: "An on-device agent that keeps conversations in a provider-neutral format, so you can switch models mid-thread (Ollama or llama.cpp) and get a fidelity report of what carried over. Includes portable encrypted session files and approval-gated tool use. Case study; code is private.",
+    tags: ["Python", "LLM", "Ollama", "llama.cpp", "React"],
+    // TODO(anubhav): add repo link if made public
+    source: null
+  },
+  {
+    title: "Adaptive-SLM",
+    description: "A research prototype for on-device small language models: a C++ core with adaptive context compression, a Rust wrapper, a Colab training pipeline and an Android tool-calling harness. Phone inference is still a work in progress.",
+    tags: ["C++", "Rust", "Android", "SLM", "Python"],
+    source: "https://github.com/Anubhavera/Adaptive-SLM"
+  },
+  {
+    title: "Kiraydaar",
+    description: "A multi-organization rent-management PWA: buildings, rooms, tenants, itemized monthly bills and payments, with an owner team per organization, WhatsApp bill sharing and CSV roster import. Tenant isolation uses Postgres row-level security. Case study; code is private.",
+    tags: ["Next.js", "TypeScript", "Supabase", "PostgreSQL", "PWA"],
+    // TODO(anubhav): add repo link if made public
+    source: null
+  },
+  {
+    title: "LegalAI",
+    description: "A research assistant that answers Indian constitutional and Supreme Court questions only from a curated corpus, with inline citations and an honest refusal when sources are missing. Not legal advice. Case study; code is private.",
+    tags: ["FastAPI", "RAG", "Qdrant", "Gemini", "Next.js"],
+    link: "https://legalai.anubhavhooda.dev",
+    // TODO(anubhav): add repo link if made public
+    source: null
   }
 
 ]
@@ -70,7 +98,7 @@ const Projects = () => {
           <h1 className="page-title" data-route-heading tabIndex={-1}>Selected Work</h1>
           
           <p className="page-subtitle">
-            Web applications, creative frontend development, and experiments in workflow orchestration.
+            AI/ML systems, web applications, creative frontend development, and experiments in workflow orchestration.
           </p>
         </div>
         
@@ -81,12 +109,12 @@ const Projects = () => {
               className="project-card"
               style={{ animationDelay: `${index * 0.08}s` }}
             >
-              <button type="button" className="project-card-image project-preview-button"
+              {project.image && <button type="button" className="project-card-image project-preview-button"
                 aria-label={`Enlarge ${project.title} preview`} aria-haspopup="dialog"
                 onClick={() => setPreview(project)}>
                 <img src={project.image} alt={`${project.title} project preview`} loading="lazy" decoding="async" />
                 <span className="preview-hint" aria-hidden="true">View preview ↗</span>
-              </button>
+              </button>}
 
               <div className="project-card-content">
                 <h2 className="project-card-title">{project.title}</h2>
@@ -98,7 +126,7 @@ const Projects = () => {
                 </div>
                 <div className="project-actions">
                   {project.link && <a className="project-live-link" href={project.link} target="_blank" rel="noopener noreferrer">Live site <span aria-hidden="true">↗</span><span className="sr-only"> — {project.title}, opens in a new tab</span></a>}
-                  <a className="project-live-link" href={project.source} target="_blank" rel="noopener noreferrer">Source code <span aria-hidden="true">↗</span><span className="sr-only"> — {project.title}, opens in a new tab</span></a>
+                  {project.source && <a className="project-live-link" href={project.source} target="_blank" rel="noopener noreferrer">Source code <span aria-hidden="true">↗</span><span className="sr-only"> — {project.title}, opens in a new tab</span></a>}
                 </div>
               </div>
             </article>
